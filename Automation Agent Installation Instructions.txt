@@ -1,0 +1,28 @@
+1. Download the agent
+curl -OL http://192.168.56.121:8080/download/agent/automation/mongodb-mms-automation-agent-manager-5.4.22.5547-1.x86_64.rhel7.rpm
+and install the package.
+sudo rpm -U mongodb-mms-automation-agent-manager-5.4.22.5547-1.x86_64.rhel7.rpm
+
+2. Create a new Agent API Key. After being generated, keys will only be shown once.
+Treat this API Key like a password.
+3. Next, open the config file
+sudo vi /etc/mongodb-mms/automation-agent.config
+
+and enter your API key, Project ID, and Ops Manager Base URL as shown below.
+mmsGroupId=5dc2cf09447a670de427a369
+mmsApiKey=5dc2cf40447a670de427a394e26cba5cca0dd1e26058d3ca36b39895
+mmsBaseUrl=http://192.168.56.121:8080
+
+To manage your API keys, visit the Agent API Keys tab.
+
+4. Prepare the /data directory to store your MongoDB data. This directory must be owned by the mongod user.
+
+sudo mkdir -p /data
+sudo chown mongod:mongod /data
+5. Start the agent.
+sudo systemctl status mongodb-mms-automation-agent.service
+sudo systemctl start mongodb-mms-automation-agent.service
+sudo systemctl enable mongodb-mms-automation-agent.service
+sudo systemctl status mongodb-mms-automation-agent.service
+On SUSE, it may be necessary to run:
+sudo /sbin/service mongodb-mms-automation-agent start

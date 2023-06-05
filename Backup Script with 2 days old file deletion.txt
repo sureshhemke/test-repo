@@ -1,0 +1,7 @@
+#!/bin/sh
+DIR=sparkrs_replica_instance3.6.23_P27007_`date +"%d-%m-%Y-T%H-%M-%S"`
+DEST=/data/fulldump/$DIR
+mkdir $DEST
+/var/lib/mongodb-linux-x86_64-rhel70-3.6.0/bin/mongodump --out $DEST --port 27017 -u mongo-admin -p password --authenticationDatabase admin --gzip
+## Two days old file deletion
+find /data/fulldump/ -mtime +2 -exec rm -rf {} \;

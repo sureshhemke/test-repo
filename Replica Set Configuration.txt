@@ -1,0 +1,317 @@
+======================================================
+Replica Set Configuration
+======================================================
+We need minimum total 3 servers to configure replica.
+One will be Primary and other 2 will be Secondary.
+MongoDB monitor the heartbeat among the servers using ping. Every 2 second and wait till 10second.
+1. Configure hostname and ip address in /etc/hosts for local resolver
+
+192.168.56.101  mondb1
+192.168.56.102  mondb2
+192.168.56.103  mondb3
+
+2. @Set below parametors in /etc/mongod.conf on all 3 servers
+=> Comentout the localhost entry add below or with IP.
+bindIp: 0.0.0.0 
+or 
+bindIp:192.168.56.101
+
+=> Make sure proper sapce (dubble space) given in file while configuring options ()
+replication:
+ replSetName: rs0 <= this is replica name. It should be same on across the 3 nodes.
+
+3. @Restart the mongod service on all 3 servers.
+#systemctl restart mongod
+
+4. @Before configuring replica try the connectivity among the servers.
+#mongo  --host mondb1
+#mongo  --host mondb2
+#mongo  --host mondb3
+
+5 Login to Mongo shell on one of the server which will be Primory.
+#mongo
+> rs.initiate() <= Will get below output.
+{
+        "info2" : "no configuration specified. Using a default configuration for the set",
+        "me" : "mondb1:27017",
+        "ok" : 1,
+        "operationTime" : Timestamp(1571309687, 1),
+        "$clusterTime" : {
+                "clusterTime" : Timestamp(1571309687, 1),
+                "signature" : {
+                        "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+                        "keyId" : NumberLong(0)
+                }
+        }
+}
+====================================================================================
+@@Add other node in replica
+rs0:OTHER> rs.add("mondb2") <= add 1st member in replica. Below will be output
+{
+        "ok" : 1,
+        "operationTime" : Timestamp(1571309744, 1),
+        "$clusterTime" : {
+                "clusterTime" : Timestamp(1571309744, 1),
+                "signature" : {
+                        "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+                        "keyId" : NumberLong(0)
+                }
+        }
+}
+====================================================================================
+rs0:PRIMARY> rs.add("mondb3") <= add 2st member in replica. Below will be output
+{
+        "ok" : 1,
+        "operationTime" : Timestamp(1571309755, 1),
+        "$clusterTime" : {
+                "clusterTime" : Timestamp(1571309755, 1),
+                "signature" : {
+                        "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+                        "keyId" : NumberLong(0)
+                }
+        }
+}
+====================================================================================
+rs0:PRIMARY> rs.status() <= We can check the replica status. Below is the details output
+
+{
+        "set" : "rs0",
+        "date" : ISODate("2019-10-17T10:59:46.276Z"),
+        "myState" : 1,
+        "term" : NumberLong(1),
+        "syncingTo" : "",
+        "syncSourceHost" : "",
+        "syncSourceId" : -1,
+        "heartbeatIntervalMillis" : NumberLong(2000),
+        "optimes" : {
+                "lastCommittedOpTime" : {
+                        "ts" : Timestamp(1571309979, 1),
+                        "t" : NumberLong(1)
+                },
+                "readConcernMajorityOpTime" : {
+                        "ts" : Timestamp(1571309979, 1),
+                        "t" : NumberLong(1)
+                },
+                "appliedOpTime" : {
+                        "ts" : Timestamp(1571309979, 1),
+                        "t" : NumberLong(1)
+                },
+                "durableOpTime" : {
+                        "ts" : Timestamp(1571309979, 1),
+                        "t" : NumberLong(1)
+                }
+        },
+        "lastStableCheckpointTimestamp" : Timestamp(1571309929, 1),
+        "members" : [
+                {
+                        "_id" : 0,
+                        "name" : "mondb1:27017",
+                        "health" : 1,
+                        "state" : 1,
+                        "stateStr" : "PRIMARY",
+                        "uptime" : 698,
+                        "optime" : {
+                                "ts" : Timestamp(1571309979, 1),
+                                "t" : NumberLong(1)
+                        },
+                        "optimeDate" : ISODate("2019-10-17T10:59:39Z"),
+                        "syncingTo" : "",
+                        "syncSourceHost" : "",
+                        "syncSourceId" : -1,
+                        "infoMessage" : "",
+                        "electionTime" : Timestamp(1571309687, 2),
+                        "electionDate" : ISODate("2019-10-17T10:54:47Z"),
+                        "configVersion" : 3,
+                        "self" : true,
+                        "lastHeartbeatMessage" : ""
+                },
+                {
+                        "_id" : 1,
+                        "name" : "mondb2:27017",
+                        "health" : 1,
+                        "state" : 2,
+                        "stateStr" : "SECONDARY",
+                        "uptime" : 241,
+                        "optime" : {
+                                "ts" : Timestamp(1571309979, 1),
+                                "t" : NumberLong(1)
+                        },
+                        "optimeDurable" : {
+                                "ts" : Timestamp(1571309979, 1),
+                                "t" : NumberLong(1)
+                        },
+                        "optimeDate" : ISODate("2019-10-17T10:59:39Z"),
+                        "optimeDurableDate" : ISODate("2019-10-17T10:59:39Z"),
+                        "lastHeartbeat" : ISODate("2019-10-17T10:59:45.670Z"),
+                        "lastHeartbeatRecv" : ISODate("2019-10-17T10:59:44.678Z"),
+                        "pingMs" : NumberLong(0),
+                        "lastHeartbeatMessage" : "",
+                        "syncingTo" : "mondb1:27017",
+                        "syncSourceHost" : "mondb1:27017",
+                        "syncSourceId" : 0,
+                        "infoMessage" : "",
+                        "configVersion" : 3
+                },
+                {
+                        "_id" : 2,
+                        "name" : "mondb3:27017",
+                        "health" : 1,
+                        "state" : 2,
+                        "stateStr" : "SECONDARY",
+                        "uptime" : 230,
+                        "optime" : {
+                                "ts" : Timestamp(1571309979, 1),
+                                "t" : NumberLong(1)
+                        },
+                        "optimeDurable" : {
+                                "ts" : Timestamp(1571309979, 1),
+                                "t" : NumberLong(1)
+                        },
+                        "optimeDate" : ISODate("2019-10-17T10:59:39Z"),
+                        "optimeDurableDate" : ISODate("2019-10-17T10:59:39Z"),
+                        "lastHeartbeat" : ISODate("2019-10-17T10:59:45.670Z"),
+                        "lastHeartbeatRecv" : ISODate("2019-10-17T10:59:44.348Z"),
+                        "pingMs" : NumberLong(0),
+                        "lastHeartbeatMessage" : "",
+                        "syncingTo" : "mondb2:27017",
+                        "syncSourceHost" : "mondb2:27017",
+                        "syncSourceId" : 1,
+                        "infoMessage" : "",
+                        "configVersion" : 3
+                }
+        ],
+        "ok" : 1,
+        "operationTime" : Timestamp(1571309979, 1),
+        "$clusterTime" : {
+                "clusterTime" : Timestamp(1571309979, 1),
+                "signature" : {
+                        "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+                        "keyId" : NumberLong(0)
+                }
+        }
+}
+====================================================================================
+@@Once all members have been added, check the configuration of your replica set:
+
+rs0:PRIMARY> rs.conf()
+
+This will display a replica set configuration object with information about each member as well as some metadata about the replica set.
+
+====================================================================================
+Test Replication
+
+1. Connect to the mongo as the administrative user,On Primory server
+#mongo
+
+2.Enter test data:
+
+rs0:PRIMARY> use NM_DB
+switched to db NM_DB
+rs0:PRIMARY> db
+NM_DB
+rs0:PRIMARY> for (var i = 0; i <= 10; i++) db.netmagic.insert( { x : i } )
+WriteResult({ "nInserted" : 1 })
+rs0:PRIMARY>
+
+The first command creates a database called NM_DB, and the second command generates 10 simple documents,
+which are then inserted into a collection called netmagic.
+
+3. If your replica set is configured properly, the data should be present on your secondary members as well as the primary. 
+To test this, connect to the mongo shell with the administrative user on one of your secondary members, and run:
+
+rs0:SECONDARY> db.getMongo().setSlaveOk()
+rs0:SECONDARY>
+
+
+This command enables secondary member read operations on a per-connection basis, so be sure to disconnect before you deploy your replica set into production. 
+By default, read queries are not allowed on secondary members to avoid problems with your application retrieving stale data. 
+This can become an issue when your database is undergoing more complex queries at a higher load,
+but because of the relatively simple test data we wrote, this is not an issue here.
+
+To Disable the read operation on Secondary server.
+rs0:SECONDARY> rs.slaveOk(false)
+
+rs0:SECONDARY> show dbs <= We can see NM_DB is created
+NM_DB        0.000GB
+admin        0.000GB
+config       0.000GB
+local        0.000GB
+suresh_tech  0.000GB
+
+rs0:SECONDARY> use NM_DB <= Use DB
+rs0:SECONDARY> show collections <= Check Created collections
+netmagic
+
+rs0:SECONDARY> db.netmagic.find() <= Check documents in collection.
+{ "_id" : ObjectId("5da8829c414fb902525175c9"), "x" : 6 }
+{ "_id" : ObjectId("5da8829c414fb902525175cc"), "x" : 9 }
+{ "_id" : ObjectId("5da8829c414fb902525175c3"), "x" : 0 }
+{ "_id" : ObjectId("5da8829c414fb902525175ca"), "x" : 7 }
+{ "_id" : ObjectId("5da8829c414fb902525175cb"), "x" : 8 }
+{ "_id" : ObjectId("5da8829c414fb902525175c4"), "x" : 1 }
+{ "_id" : ObjectId("5da8829c414fb902525175c5"), "x" : 2 }
+{ "_id" : ObjectId("5da8829c414fb902525175c7"), "x" : 4 }
+{ "_id" : ObjectId("5da8829c414fb902525175cd"), "x" : 10 }
+{ "_id" : ObjectId("5da8829c414fb902525175c8"), "x" : 5 }
+{ "_id" : ObjectId("5da8829c414fb902525175c6"), "x" : 3 }
+rs0:SECONDARY>
+
+====================================================================================
+Set Up MongoDB Authentication
+====================================================================================
+@@ Generate key with openssl, MongoDB recommends using an X.509 certificate to secure connections between production systems.
+1. Issue below command to generate your key file:
+
+[root@mondb1 ~]# openssl rand -base64 756 > /opt/mongo-keyfile
+
+Once you’ve generated the key, copy it to each member of your replica set.
+
+@@Keep the same location of key file on all nodes.
+@Create below directory on all nodes.
+#mkdir /opt/mongo
+
+@Copy the key file on all nodes
+[root@mondb1 ~]# scp -rvp /opt/mongo/mongo-keyfile mondb2:/opt/mongo/mongo-keyfile
+[root@mondb1 ~]# scp -rvp /opt/mongo/mongo-keyfile mondb3:/opt/mongo/mongo-keyfile
+
+@@ Apply permission and ownership on key file on all nodes.
+# chmod 400 /opt/mongo/mongo-keyfile
+# chown mongod:mongod /opt/mongo/mongo-keyfile
+---------------------------------------------------------------------------------------
+Create an Administrative User
+---------------------------------------------------------------------------------------
+1. On the node that you intend to use as the primary member of your replication set, log in to the mongo shell:
+#mongo
+
+2. Connect to the admin database:
+> use admin
+
+3. Create an administrative user with root privileges. Replace “password” with a strong password of your choice:
+
+> db.createUser({
+	user: "mongo-admin",
+	pwd: "password",
+	roles:[{
+			role: "root",
+			db: "admin"}]
+		})
+		
+4. Configure MongoDB
+On each of your nodes, make the following changes to your /etc/mongod.conf file:
+---------------------------------------
+security:
+  authorization: enabled
+  keyFile: /opt/mongo/mongo-keyfile
+---------------------------------------
+
+Uncomment the "security" section, and use the keyFile option to direct MongoDB to the key you created previously.
+Enabling keyFile authentication automatically enables "role-based access control" as well, 
+so you will need to create users and assign them privileges to access specific databases.
+
+@@ Login mongoDB with username and password along with DB ("admin" is DB name )
+
+[root@mondb1 ~]# mongo -u mongo-admin -p --authenticationDatabase admin
+MongoDB shell version v4.0.12
+Enter password:
+
+

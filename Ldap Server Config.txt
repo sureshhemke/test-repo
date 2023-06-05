@@ -1,0 +1,271 @@
+1.
+[root@ldap-server ~]# yum -y install openldap* migrationtools
+2.
+[root@ldap-server ~]# slappasswd
+New password:
+Re-enter new password:
+{SSHA}Y9uc9U3lZr1RLF9m/huN3KOiAE0+iH1B
+[root@ldap-server ~]#
+3. 
+
+Edit "olcDatabase\=\{2\}hdb.ldif" file for changing configuration.
+Change "olcSuffix" and "olcRootDN" acroding to your domain name as below
+
+[root@ldap-server cn=config]# vi /etc/openldap/slapd.d/cn\=config/olcDatabase\=\{2\}hdb.ldif
+
+olcSuffix: dc=sureshhemke,dc=com
+olcRootDN: cn=Manager,dc=sureshhemke,dc=com
+
+Add below additionaly three lines in same configuration file.
+olcRootPW: {SSHA}Y9uc9U3lZr1RLF9m/huN3KOiAE0+iH1B
+olcTLSCertificateFile: /etc/pki/tls/certs/sureshhemkeldap.pem
+olcTLSCertificateKeyFile: /etc/pki/tls/certs/sureshhemkeldapkey.pem
+
+Repalce the olcRootPW: value with your copied password and save config file.
+
+4. Provide the monitoring privileges
+
+Open "olcDatabase\=\{1\}monitor.ldif" file and go to the line start with "olcAccess:" and replace the value dc=sureshhemke,dc=com.
+[root@ldap-server cn=config]# vi /etc/openldap/slapd.d/cn\=config/olcDatabase\=\{1\}monitor.ldif
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=extern
+ al,cn=auth" read by dn.base="cn=Manager,dc=sureshhemke,dc=com" read by * none
+
+5. Verify the configuration
+[root@ldap-server cn=config]# slaptest -u
+5dd3c886 ldif_read_file: checksum error on "/etc/openldap/slapd.d/cn=config/olcDatabase={1}monitor.ldif"
+5dd3c886 ldif_read_file: checksum error on "/etc/openldap/slapd.d/cn=config/olcDatabase={2}hdb.ldif"
+config file testing succeeded
+[root@ldap-server cn=config]#
+
+Ignore Checksum error as of now.
+
+6. Configure LDAP database
+Copy the sample database config file and change the permission as below
+[root@ldap-server cn=config]# cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
+[root@ldap-server cn=config]# chown -R ldap. /var/lib/ldap/
+[root@ldap-server cn=config]# ll /var/lib/ldap/
+total 324
+-rw-r--r-- 1 ldap ldap     2048 Nov 19 17:41 alock
+-rw------- 1 ldap ldap   262144 Nov 19 17:41 __db.001
+-rw------- 1 ldap ldap    32768 Nov 19 17:41 __db.002
+-rw------- 1 ldap ldap    49152 Nov 19 17:41 __db.003
+-rw-r--r-- 1 ldap ldap      845 Nov 19 17:47 DB_CONFIG	<== Check permision of this file.
+-rw------- 1 ldap ldap     8192 Nov 19 17:39 dn2id.bdb
+-rw------- 1 ldap ldap    32768 Nov 19 17:39 id2entry.bdb
+-rw------- 1 ldap ldap 10485760 Nov 19 17:41 log.0000000001
+[root@ldap-server cn=config]#
+
+7. In Step 3 we have have specified our certificate location, But we hv not created yet. lets create self sign certificate.
+ 
+[root@ldap-server cn=config]# openssl req -new -x509 -nodes -out /etc/pki/tls/certs/sureshhemkeldap.pem -keyout /etc/pki/tls/certs/sureshhemkeldapkey.pem -days 365
+
+Provide  details once you enter above command.
+
+Verify the created certificate under the location /etc/pki/tls/certs/
+[root@ldap-server cn=config]# ll /etc/pki/tls/certs/*.pem
+-rw-r--r-- 1 root root 1704 Nov 19 17:24 /etc/pki/tls/certs/sureshhemkeldapkey.pem
+-rw-r--r-- 1 root root 1456 Nov 19 17:24 /etc/pki/tls/certs/sureshhemkeldap.pem
+[root@ldap-server cn=config]#
+
+8. Start and enable slapd service
+[root@ldap-server cn=config]# systemctl stop slapd
+[root@ldap-server cn=config]# systemctl restart slapd
+[root@ldap-server cn=config]# systemctl status slapd
+[root@ldap-server cn=config]# systemctl enable slapd
+[root@ldap-server cn=config]# netstat -tulnp |grep -i slap
+tcp        0      0 0.0.0.0:389             0.0.0.0:*               LISTEN      2458/slapd
+tcp6       0      0 :::389                  :::*                    LISTEN      2458/slapd
+[root@ldap-server cn=config]#
+
+9. Add the following LDAP Schemas
+[root@ldap-server cn=config]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+[root@ldap-server cn=config]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif
+[root@ldap-server cn=config]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+
+Output of above cmd:
+-----------------------------------------------------------------------------------------------
+[root@ldap-server ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=cosine,cn=schema,cn=config"
+
+[root@ldap-server ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=nis,cn=schema,cn=config"
+
+[root@ldap-server ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=inetorgperson,cn=schema,cn=config"
+-----------------------------------------------------------------------------------------------
+
+10. Create base object in Ldap.
+   Create base object we need migration tool to be installed, We already installed it.
+You can see lots of file under /usr/share/migrationtools/
+
+cd /usr/share/migrationtools/
+[root@ldap-server migrationtools]# ls
+migrate_aliases.pl              migrate_all_offline.sh  migrate_hosts.pl            migrate_protocols.pl
+migrate_all_netinfo_offline.sh  migrate_all_online.sh   migrate_netgroup_byhost.pl  migrate_rpc.pl
+migrate_all_netinfo_online.sh   migrate_automount.pl    migrate_netgroup_byuser.pl  migrate_services.pl
+migrate_all_nis_offline.sh      migrate_base.pl         migrate_netgroup.pl         migrate_slapd_conf.pl
+migrate_all_nis_online.sh       migrate_common.ph       migrate_networks.pl
+migrate_all_nisplus_offline.sh  migrate_fstab.pl        migrate_passwd.pl
+migrate_all_nisplus_online.sh   migrate_group.pl        migrate_profile.pl
+[root@ldap-server migrationtools]#
+
+We need to changed predifined values in "migrate_common.ph" file according to our domain name.
+
+[root@ldap-server migrationtools]# vi migrate_common.ph
+
+Go to the line no. 71 and change your domain name.
+
+$DEFAULT_MAIL_DOMAIN = "sureshhemke.com";
+
+Go to the line no. 74 and change your base name.
+
+$DEFAULT_BASE = "dc=sureshhemke,dc=com";
+
+Go to the line no. 90 and change your EXTENDED_SCHEMA from "0" to "1"
+
+$EXTENDED_SCHEMA = 1;
+
+11. Generate base.ldif file for your domain.
+
+[root@ldap-server migrationtools]# vi /root/base.ldif			<== Add below lines in /root/base.ldif
+dn: dc=sureshhemke,dc=com
+objectClass: top
+objectClass: dcObject
+objectclass: organization
+o: sureshhemke com
+dc: sureshhemke
+
+dn: cn=Manager,dc=sureshhemke,dc=com
+objectClass: organizationalRole
+cn: Manager
+description: Directory Manager
+
+dn: ou=People,dc=sureshhemke,dc=com
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,dc=sureshhemke,dc=com
+objectClass: organizationalUnit
+ou: Group
+
+Replace your domain name accordinglly. Here sureshhemke.com is our domain.
+
+12. Create local user
+
+[root@ldap-server migrationtools]# useradd ldapuser1
+[root@ldap-server migrationtools]# useradd ldapuser2
+[root@ldap-server migrationtools]# echo "redhat" | passwd --stdin ldapuser1
+[root@ldap-server migrationtools]# echo "redhat" | passwd --stdin ldapuser2
+
+Find out these user from /etc/passwd to another file.
+[root@ldap-server migrationtools]# grep ":10[0-9][0-9]" /etc/passwd > /root/passwd
+
+Find out these group from /etc/group to another file.
+[root@ldap-server migrationtools]# grep ":10[0-9][0-9]" /etc/group > /root/group
+
+Now convert the individual users file to LDIF 
+Generate a ldif file for user
+[root@ldap-server migrationtools]# ./migrate_passwd.pl /root/passwd /root/users.ldif
+
+Generate a ldif file for Groups
+[root@ldap-server migrationtools]# ./migrate_group.pl /root/group /root/groups.ldif
+
+13. Import users in LDAP Database
+---------
+Note: It will ask for a password of "Manager". you hv to type password which you have generated inencripted format eariler.
+--------- 
+[root@ldap-server cn=config]# ldapadd -x -W -D "cn=Manager,dc=sureshhemke,dc=com" -f /root/base.ldif
+Enter LDAP Password:
+adding new entry "dc=sureshhemke,dc=com"
+
+adding new entry "cn=Manager,dc=sureshhemke,dc=com"
+
+adding new entry "ou=People,dc=sureshhemke,dc=com"
+
+adding new entry "ou=Group,dc=sureshhemke,dc=com"
+
+[root@ldap-server cn=config]#
+
+[root@ldap-server cn=config]# ldapadd -x -W -D "cn=Manager,dc=sureshhemke,dc=com" -f /root/users.ldif
+Enter LDAP Password:
+adding new entry "uid=ldapuser1,ou=People,dc=sureshhemke,dc=com"
+
+adding new entry "uid=ldapuser2,ou=People,dc=sureshhemke,dc=com"
+
+[root@ldap-server cn=config]#
+
+[root@ldap-server cn=config]# ldapadd -x -W -D "cn=Manager,dc=sureshhemke,dc=com" -f /root/groups.ldif
+Enter LDAP Password:
+adding new entry "cn=ldapuser1,ou=Group,dc=sureshhemke,dc=com"
+
+adding new entry "cn=ldapuser2,ou=Group,dc=sureshhemke,dc=com"
+
+[root@ldap-server cn=config]#
+
+14. Test the configuration
+To test configuration, search for user "ldapuser1" in LDAP as below
+[root@ldap-server cn=config]# ldapsearch -x cn=ldapuser1 -b dc=sureshhemke,dc=com
+Output: 
+# extended LDIF
+#
+# LDAPv3
+# base <dc=sureshhemke,dc=com> with scope subtree
+# filter: cn=ldapuser1
+# requesting: ALL
+#
+
+# ldapuser1, People, sureshhemke.com
+dn: uid=ldapuser1,ou=People,dc=sureshhemke,dc=com
+uid: ldapuser1
+cn: ldapuser1
+sn: ldapuser1
+mail: ldapuser1@sureshhemke.com
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: top
+objectClass: shadowAccount
+userPassword:: e2NyeXB0fSQ2JGduekR0Tjh6JERKOGdvVnB3amlvNFFjN2JDN1RBTDlZVUxVTDI
+ yTWUvbmd5YzZ0M21vQmRzbWo4WDRxL2xBNGxEMDJlSHBYeTlvSnNMb2c5L1AxODEuUG45Z2UvTy4v
+shadowLastChange: 18219
+shadowMin: 0
+shadowMax: 99999
+shadowWarning: 7
+loginShell: /bin/bash
+uidNumber: 1001
+gidNumber: 1001
+homeDirectory: /home/ldapuser1
+
+# ldapuser1, Group, sureshhemke.com
+dn: cn=ldapuser1,ou=Group,dc=sureshhemke,dc=com
+objectClass: posixGroup
+objectClass: top
+cn: ldapuser1
+userPassword:: e2NyeXB0fXg=
+gidNumber: 1001
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 3
+# numEntries: 2
+[root@ldap-server cn=config]#
+
+Below command will print all information.
+[root@ldap-server cn=config]# ldapsearch -x -b 'dc=sureshhemke,dc=com' '(objectclass=*)'
+
+
+
+
+

@@ -1,0 +1,26 @@
+Till now i have completed below task on mongoDB
+1. MongoDB installation with rpm and tarball
+2. Enable mongoDB authentication with user and key
+3. DB and collecttion creation.
+4. Document inserted in collection.
+5. Dropped DB and collection
+6. To view document data from collection
+7. Count documents from the collection
+8. Make clone of exisitng Database
+9. User Creation in MongoDB
+10. Backup and restore database and single collection using mongodump/mongorestore
+11. Backup and restore in archive format with compression
+12. Collection Backup and restore with mongoexport and mongoimport
+13. ReplicaSet configuration using 3 instances of mongodb using mongo shell
+14. Reset mongoDB replicaset
+15. Sharding configuration using mongo shell 
+	With below components
+    a. mongos router
+	b. Config srv with replicaSet (3 mongodb Instances)
+	b. 2 Shards (Per shard 3 servers with replicaset)
+
+16. MongoDB OPS Manager configuration standalone and with HA.
+17. MongoDB OPS Manager configuration with standalone DB and with replicaSet
+18. 
+
+	

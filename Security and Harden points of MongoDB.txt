@@ -1,0 +1,138 @@
+==========================================================================
+Security and Harden points of MongoDB
+==========================================================================
+----------------------------------------------------------
+1. Disable MongoDB HTTP Status Interface and REST API
+----------------------------------------------------------
+Versions of MongoDB prior to 3.2 used to provide a simple HTTP interface and REST API listing information of interest for debugging purposes. 
+These interfaces MUST never been enabled in production environments, as said in the official docs:
+
+"The HTTP Status Interface must be disabled in production environments to prevent potential data exposure and vulnerability to attackers."
+
+Disabling MongoDB HTTP Status Interface and REST API
+
+Open /etc/mongod.conf with your favorite code editor and search for the following lines:
+
+$ vi /etc/mongod.conf
+
+net:
+  http:
+    enabled: true
+    RESTInterfaceEnabled: true
+	
+Now make sure that both "enabled" and "RESTInterfaceEnabled" are set to false , save and reload mongod:	
+
+$ sudo service mongod restart
+[ ok ] Restarting database: mongod.
+----------------------------------------------------------
+2. MongoDB User Credentials and Security Best Practices
+----------------------------------------------------------
+ How to reduce attack surface and mitigate possible security breaches being sensible at the time of creating user credentials and assigning them roles and permissions
+ When creating new users and assigning them roles:
+ a. Never share a single user across several applications, even though they only make queries to the same one database.
+ b. Remind this. We can’t help but emphasize the previous point: one application, one user.
+ c. In the same manner, one user should only be granted roles and permissions over a single database.
+ d. Always grant the most restrictive role. If your app only reads from two collections, grant it a readOnly permission solely over those collections and not over the whole database.
+ e. Never grant apps the dbAdmin or dbOwner roles. Why in the hell would your app need to create and delete collections or database-wide users?
+
+In the event that some day your app gets somehow compromised or hacked — which is something no one can prevent to the 100% — the damage will be minimal as long as you followed the above guidelines to the letter.
+
+----------------------------------------------------------
+3. Disable Server-Side Javascript on MongoDB
+----------------------------------------------------------
+How to protect yourMongoDB server from NoSQL injection attacks by disabling server-side Javascript features
+All of the following MongoDB operations permit you to run arbitrary JavaScript expressions directly on the server:
+ $where
+ mapReduce
+ group
+These methods can be really convenient, but they pose a huge security risk to your database integrity 
+if your application does not sanitize and escape user-provided values properly, as proven by many reports of NoSQL injection attacks.
+
+Indeed, you can express most queries in MongoDB without JavaScript, so the most sensible option is to completely disable sever-side Javascript.
+
+Disabling server-side Javascript on MongoDB
+
+Open /etc/mongod.conf with your favorite code editor and look for the security section:
+
+$vi /etc/mongod.conf
+
+security:
+    authorization: "enabled"
+	javascriptEnabled: false <= Make sure to add this line inside the security section:
+	
+Now save the file and restart mongod :
+
+$ sudo service mongodb restar
+
+Done! Your deployment is now resistant to NoSQL injections!
+
+----------------------------------------------------------
+4. Enable Authentication on MongoDB	
+----------------------------------------------------------
+How to properly configure the most important and fundamental security feature that comes with MongoDB
+
+"Never run a production server without authentication on."
+
+Really, never do so. No authentication means inviting everyone out there to enter your databases, 
+seize everything and potentially ransom you for your data.
+
+Running a testing server? Enable authentication either way, just in case you move it into production one day and you forget to enable it then!
+
+Enabling authentication on MongoDB
+
+  a. Start MongoDB without authentication
+  That’s easy, as this is the default behavior.
+  
+  b. Connect to the server using the mongo shell
+     $ mongo mongodb://<host>:<port>
+
+     The port numberwill likely be 27017, but for additional security, you can always change it to a different one.
+
+  c. Create the user administrator
+     Change to the admin database:  
+	> use admin
+You need to create a user with the userAdminAnyDatabase role, which grants the privilege to create other users on any existing database. 
+The following example will create the useradmin user with password “thepianohasbeendrinking”:
+	
+	> db.createUser(
+	{
+		user: "useradmin",
+		pwd: "thepianohasbeendrinking",
+		roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
+	}
+	)
+Then disconnect from the mongo shell (Ctrl+D).
+
+  d. Enable authentication in mongod configuration file
+    Open /etc/mongod.conf with your favorite code editor and search for the following lines:
+  $vi /etc/mongod.conf
+  security:
+    authorization: "enabled"
+	
+save the file and restart mongod :
+
+From now on, all clients connecting to this server must authenticate themselves as a valid users, 
+and they will be only able to perform actions as determined by their assigned roles.
+
+  e. Connect and authenticate as the user administrator
+	$ mongo mongodb://<host>:<port>
+	> db.auth("superadmin", "thepianohasbeendrinking")
+	1  
+
+You can also connect and authenticate in one single step with 
+
+mongo mongodb://superadmin:thepianohasbeendrinking@<host>:<port>
+
+but this option isn’t advised because it will leave your credentials visible in your terminal history, which any program on your computer can actually read.	
+	
+  f. Finally, create additional users as needed
+	> use test
+	> db.createUser(
+	{
+		user: "myTester",
+		pwd: "xyz123",
+		roles: [ { role: "readWrite", db: "test" } ]
+	}
+	)  
+
+When creating new users and assigning them roles, you should always take into account the MongoDB user credentials best practices.	

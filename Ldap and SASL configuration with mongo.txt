@@ -1,0 +1,127 @@
+====================================================================
+Authenticate Using SASL and LDAP with OpenLDAP
+====================================================================
+
+The Document will provide you step by step configuration for LDAP with OpenLdap for mongo DB instances.
+
+@ Linux MongoDB servers support binding to an LDAP server via the saslauthd daemon.
+
+@	Use secure encrypted or trusted connections between clients and the server, as well as between saslauthd and the LDAP server. 
+    The LDAP server uses the SASL PLAIN mechanism, sending and receiving data in plain text. 
+	You should use only a trusted channel such as a VPN, a connection encrypted with TLS/SSL, or a trusted wired network.
+	
+@	Configure saslauthd
+	LDAP support for user authentication requires proper configuration of the saslauthd daemon process as well as the MongoDB server.
+	
+@	Specify the mechanism
+
+On systems that configure saslauthd with the /etc/sysconfig/saslauthd file, such as Red Hat Enterprise Linux, Fedora, CentOS, and Amazon Linux AMI, 
+set the mechanism MECH to ldap:
+
+$ vi /etc/sysconfig/saslauthd
+
+MECH=ldap
+
+For Ubuntu 
+
+MECHANISMS="ldap"
+
+@ Configure LDAP Options with Openldap
+
+  if the saslauthd.conf file does not exist, create it. The saslauthd.conf file usually resides in the /etc folder. 
+  To use with Openldap, start saslauthd with the following configuration options set in the saslauthd.conf file:
+
+$ vi /etc/saslauthd.conf  
+
+ldap_servers: ldap://ldap-server
+ldap_search_base: ou=People,dc=ffcl,dc=com
+ldap_filter: (uid=%u)
+
+Note: For the <ldap uri>, specify the uri of the ldap server. In our case ldap://ldap-server
+
+@	Test the saslauthd configuration
+
+Restart the service or cmd saslauthd -a ldap -O /etc/saslauthd.conf
+$ systemctl restart saslauthd
+or
+$ saslauthd -a ldap -O /etc/saslauthd.conf
+
+Use testsaslauthd utility to test the saslauthd configuration. For example:
+
+$ testsaslauthd -u ldapuser1 -p redhat -f /var/run/saslauthd/mux	
+
+Chanage user name and password acrodingly your login details. In our case user: ldapuser1 & pass: redhat
+
+	0: OK "Success" indicates successful authentication.
+	0: NO "authentication failed" indicates a username, password, or configuration error.
+
+Note : /var/run/saslauthd directory must have permissions set to 755 for MongoDB to successfully authenticate.
+
+-------------------------------------------------------
+	Configure MongoDB
+-------------------------------------------------------
+@	Add user to MongoDB for authentication
+
+Add the user to the $external database in MongoDB. To specify the user’s privileges, assign roles to the user.
+
+For example, the following adds a user with read-only access to the records database from mongo shell.
+
+> db.getSiblingDB("$external").createUser( {user : "ldapuser1",roles: [ { role: "read", db: "records" } ] })
+
+For example, the following adds a user with userAdminAnyDatabase role access to the admin/all database from mongo shell.
+
+>db.getSiblingDB("$external").createUser( {user : "ldapuser2", roles: [ { role: "userAdminAnyDatabase", db: "admin" } ] } )
+
+Note: Here ldapuser1 & ldapuser2 is created on ldap server. While creating the users we need to pass roles.
+
+To authentication using ldap users, we need to add those users in mongodb as $external user as shown above cmd.
+
+-------------------------------------------------------
+	Configure MongoDB server
+-------------------------------------------------------
+To configure the MongoDB server to use the saslauthd instance for proxy authentication, include the following options when starting mongod:
+@	--auth command line option or security.authorization setting,
+@	authenticationMechanisms parameter set to PLAIN, and
+@	saslauthdPath parameter set to the path to the Unix-domain Socket of the saslauthd instance.
+
+You can start mongoDB using command with parametors else add those parameters in /etc/mongod.conf
+
+@Use specific saslauthd socket path.
+$ mongod --auth --setParameter saslauthdPath=/var/run/saslauthd/mux --setParameter authenticationMechanisms=PLAIN
+
+@Use default Unix-domain socket path
+$ mongod --auth --setParameter saslauthdPath="" --setParameter authenticationMechanisms=PLAIN
+
+$ vi /etc/mongod.conf
+
+security:
+  authorization: "enabled"
+setParameter:
+  saslauthdPath: /var/run/saslauthd/mux
+  authenticationMechanisms: PLAIN
+  
+  OR below => If you want to use default Unix-domain socket path then add below lines
+  
+security:
+   authorization: enabled
+setParameter:
+   saslauthdPath: ""
+   authenticationMechanisms: PLAIN
+   
+Save and restart mongod service
+
+@	Authenticate the user in the mongo shell
+
+To authenticate when connecting with the mongo shell, run mongo with the following options, substituting <host> and <user>, and enter your password when prompted:
+
+$ mongo --host localhost --authenticationMechanism PLAIN --authenticationDatabase '$external' -u ldapuser1 -p
+
+
+Alternatively, connect without supplying credentials and call the db.auth() method on the $externaldatabase as below.
+
+$ mongo --host localhost --authenticationMechanism PLAIN --authenticationDatabase '$external'
+   
+> db.getSiblingDB("$external").auth( { mechanism: "PLAIN", user: "ldapuser2", pwd:  "redhat@12", digestPassword: false  })
+  
+
+The server forwards the password in plain text. In general, use only on a trusted channel (VPN, TLS/SSL, trusted wired network). See Considerations.  

@@ -1,0 +1,91 @@
+MY Setup Detaill
+=================================================================
+Hostname
+=================================================================
+192.168.56.124	mongo-router
+192.168.56.125	mnconfig-1
+192.168.56.126	mnconfig-2
+192.168.56.127	mnconfig-3
+192.168.56.128	mnshardsrv0-1
+192.168.56.129	mnshardsrv0-2
+192.168.56.130	mnshardsrv0-3
+192.168.56.131	mnshardsrv1-1	
+192.168.56.132	mnshardsrv1-2
+192.168.56.133	mnshardsrv1-3
+192.168.56.134	mongo-ops-manager
+192.168.56.135	ops-manager-db-1
+192.168.56.136	ops-manager-db-2
+=================================================================
+PORTs
+27017	= Mongos Router
+27018	= Shard server
+27019	= Config server
+
+MongoDB Userd
+
+OS Credentials
+user: root || Pass: redhat@123
+
+Ops Mgr credn
+User: sureshhemke
+Pass: redhat@123
+
+MongoDB Users
+DB user: mongo-root
+Pass: pswword
+
+
+Ops manager
+DB user: mms-automation
+Pass: password
+
+
+db.createUser({
+	user: "mongo-root",
+	pwd: "password",
+	roles:[{
+			role: "root",
+			db: "admin"}]
+		})
+=================================================================
+Directory stucture
+=================================================================
+mkdir -p /data/mongod/db	<= Database location
+mkdir -p /data/mongod/log	<= mongodb log loaction
+mkdir -p /data/mongod/key	<= Auth key file	
+chown mongod. -R /data/		<= Set ownership
+
+openssl rand -base64 756 > /data/mongod/key/mongo-keyfile	<= Genrate key file and copy to all server
+chown mongod. /data/mongod/key/mongo-keyfile				<= Set Onership
+chmod 400 /data/mongod/key/mongo-keyfile
+
+Set ulimit
+@ vi /etc/security/limits.conf
+mongod soft nproc 64000
+mongod hard nproc 64000
+mongod soft nofile 64000
+mongod hard nofile 64000
+sysctl -p
+
+echo "never" >  /sys/kernel/mm/transparent_hugepage/defrag
+echo "never" > /sys/kernel/mm/transparent_hugepage/enabled
+
+sharding:
+  configDB: config-rs/mnconfig-1:27019,mnconfig-2:27019,mnconfig-3:27019
+  
+  sh.addShard( "shard-01/mnshardsrv0-1:27018,mnshardsrv0-2:27018,mnshardsrv0-3:27018" )
+  sh.addShard( "shard-02/mnshardsrv1-2:27018,mnshardsrv1-1:27018,mnshardsrv1-3:27018" )
+  sh.addShard( "rs0/mondb1:27017,mondb2:27017,mondb3:27017" )
+
+
+Ops Manger
+
+mongo mongodb://mongo-root:password@ops-manager-db-1:27017
+
+mongodb mms conf properties
+mongodb://mongo-root:password@ops-manager-db-1:27017/?maxPoolSize=150
+
+
+
+
+
