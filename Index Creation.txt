@@ -1,0 +1,3 @@
+db.test_detail.createIndex({"atomEnrollmentId": 1, "tenantId": 1,"testType": 1,"testCompletedAt": 1}, {name: ""})
+
+Note: Append the name in name field

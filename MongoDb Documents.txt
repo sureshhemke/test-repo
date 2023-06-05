@@ -1,0 +1,256 @@
+======================================================
+		MongoDB Documents
+======================================================
+@To create database (This will creare database if not exist and if exist then  switced the DB)
+#use suresh_tech
+
+@Show Databases
+#show dbs
+
+@Create empty collection
+#db.createCollection("users")
+
+@Create collection with documents (This will creare a document and insert data in it if not exist and if exist then insert the data)
+db.users.insert({
+    "name" : "Suresh Hemke",
+    "city" : "Mumbai",
+    "colors" : ["red", "orange", "yellow"]
+    })
+
+@To show the data of collection
+#db.users.find()
+
+@Insert multiple documents in Collection
+db.courses.insert([
+{
+    "name" : "PHP Tutorial",
+    "price" : 200,
+    "duration" : "30 days",
+    "batch time" : "9:30 to 11:30"
+},
+
+{
+    "name" : "JAVA Tutorial",
+    "price" : 400,
+    "duration" : "60 days",
+    "batch time" : "11:30 to 1:30"
+},
+
+{
+    "name"  : "Linux Tutorial",
+    "price" : 600,
+    "duration" : "60 days",
+    "batch time" : "1:30 to 3:30"
+}
+])
+
+=========================OR=============================
+db.users.insertMany([
+{
+name : "Alex",
+age : 19,
+city : "Mumbai"
+},
+{
+name : "Albert" , 
+age : 20,
+city : "Chennai"
+}, 
+{
+name : "Bob" , 
+age : 19,
+city : "Bangalore"
+}
+])
+
+@@ Login mongodb with user name and password
+#mongo --host mondb2 --port 27017 -u mongo-admin -p redhat@123
+OR
+#mongo --host mondb2 --port 27017 -u mongo-admin
+OR
+#mongo -umongo-admin -p --authenticationDatabase admin
+
+@@ Rename Database with below command in mongo shell.
+
+   mongo> db.copyDatabase('old_database', 'new_database')
+
+It is recommended that you verify the copy was successful and remove the old database.
+   mongo> use old_database
+   mongo> db.dropDatabase()
+   
+@@ Count all document from the collection
+   Count the number of the documents in the "video_reviews" collection.
+   
+   mongo> db.video_reviews.count()
+		20
+   mongo>
+
+======================================================================
+			User Creation in MongoDB
+======================================================================
+
+MongoDB is not configured with any user credentials by default. 
+Best security practices recommend that an administrative user and database user be utilized in a production environment.
+
+1. An administrative user is added to the MongoDB "admin" database. Use the mongo client to connect to MongoDB.
+# mongo
+
+2. Connect to the "admin" database and create the administrative user.
+> use admin
+db.createUser(
+      {
+          user: "mongo-admin",
+          pwd: "redhat@123",
+          roles: [ "root" ]
+      }
+  )
+
+The new administrative user can now be used to log into a MongoDB database.
+
+#mongo -u mongo-admin -p redhat@123 --authenticationDatabase admin
+
+Create Database User
+=====================
+>use mydatabase <==  Here "mydatabase" is database name.
+
+db.createUser(
+    {
+        user: "suresh",
+        pwd: "suresh@123",
+        roles: [
+            { role: "readWrite", db: "mydatabase" }
+        ]
+    }
+)
+
+The database can then be accessed with the new user.
+#mongo -u suresh -p suresh@123 --authenticationDatabase mydatabase
+db.createUser({
+	"user": "hemke",
+	"pwd": "hemke@123",
+	"roles":[
+		   {role: "readWrite", db: "mydatabase"},
+		   {role: "readAnyDatabase", db: "mydatabase"}
+]
+})
+
+Update user roles
+db.updateUser("suresh", 
+	{roles: 
+	[{role: "readWrite", db:"hemke"}]
+	
+	}
+	)
+
+Built-in roles:
+
+read: collStats, dbHash, dbStats, find, killCursors, listIndexes, listCollections 
+readWrite: All read privileges + convertToCapped, createCollection, dbStats, dropCollection, createIndex, dropIndex, emptycapped, insert, listIndexes, remove, renameCollectionSameDB, update.  
+readAnyDatabase: Allows the user to perform read in any database except the local and the config databases.
+
+Steps:
+
+1. Create the database:
+mongo -u mongo-admin -p --authenticationDatbase admin
+use percona
+db.foo.insert({x : 1})
+db.foo2.insert({x : 1})
+
+2. Create a new user:
+> db.createUser({user : 'client_read', pwd : '123', roles : ['read']})
+Successfully added user: { "user" : "client_read", "roles" : [ "read" ] }
+
+3. Log in with the user that has just been created and check the user access:
+
+#./mongo localhost/percona -u client_read -p
+
+MongoDB shell version v3.4.0-rc5
+Enter password:
+db.foo.find()
+{ "_id" : ObjectId("586bc2e9cac0bbb93f325d11"), "x" : 1 }
+db.foo2.find().count()
+1
+// If user try to insert documents will receive an error:
+> db.foo.insert({x : 2})
+WriteResult({
+            "writeError" : {
+            "code" : 13,
+            "errmsg" : "not authorized on percona to execute command
+                 { insert: "foo", documents: [ { _id: ObjectId('586bc36e7b114fb2517462f3'), x: 2.0 } ], ordered: true }"
+            }
+})
+
+4. Log out and log in again with administrator user to create a new role for this user:
+
+
+#mongo -u superAdmin -p --authenticationDatabase admin
+db.createRole({
+role : 'write_foo2_Collection',
+privileges : [ {resource : {db : "percona", collection : "foo2"}, actions : ["insert","remove"]}
+],
+roles : ["read"]
+})
+db.updateUser('client_read', roles : ['write_foo2_Collection'])
+
+5. Check the new access:
+#mongo
+db.auth('client_read','123') <= From mongo console login as user
+1
+> show collections
+foo
+foo2
+> db.foo.find()
+{ "_id" : ObjectId("586bc2e9cac0bbb93f325d11"), "x" : 1 }
+> db.foo2.insert({y : 2})
+WriteResult({ "nInserted" : 1 })
+> db.foo.insert({y : 2}) //does not have permission.
+WriteResult({
+      "writeError" : {
+            "code" : 13,
+            "errmsg" : "not authorized on percona to execute command { insert: "foo", documents: [ { _id: ObjectId('586bc5e26f05b3a5db849359'), y: 2.0 } ], ordered: true }"
+                     }
+})
+
+6. We can also add access to other database resources. Let’s suppose we would like to grant this just created user permission to execute a getLog command. 
+   This command is available in he "clusterAdmin" role, but we do not want to give all this role’s access to him. See here.
+   There is a caveat/detail/observation here. If we want to grant cluster privileges to a user, 
+   we should create the role in the admin database. Otherwise, the command will fail:
+
+db.grantPrivilegesToRole(
+     "write_foo2_Collection",
+           [
+                  {resource : {cluster : true}, actions : ["getLog"] }
+           ]
+)
+Roles on the 'percona' database cannot be granted privileges that target other databases or the cluster :   
+
+7. We are creating the same role in the admin database. This user only works properly if the admin
+   database is present in a possible restore. Otherwise, the privileges fail:
+
+use admin
+db.createRole({
+     role : 'write_foo2_Collection_getLogs',
+     privileges : [
+                       {resource : {db : "percona", collection : "foo2"}, actions : ["insert","remove"]},
+                       {resource : {cluster : true}, actions : ["getLog"]}],  
+     roles : [ {role : "read", db: "percona"}]
+})
+use percona
+db.updateUser( "client_read",
+{
+     roles : [
+          { role : "write_foo2_Collection_getLogs", db : "admin" }
+                ]
+}
+)
+
+8. Now the user has the same privileges as before, plus the getLog permission. We can test this user new access with:
+
+#mongo --authenticationDatabase percona -u read_user -p
+db.adminCommand({getLog : 'global'})
+{
+          "totalLinesWritten" : 287,
+          "log" : [....
+….
+}   
+

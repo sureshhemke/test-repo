@@ -1,0 +1,51 @@
+
+======================= INDEX Details =======================
+Database - ApolloReporting
+Collection - test_detail
+IndexName - atomEnrollmentId_1_tenantId_1_test_type_1_testCompletedAt_1
+Query - {"atomEnrollmentId": 1, "tenantId": 1,"testType": 1,"testCompletedAt": 1}
+
+Database - ApolloReporting
+	Collection - test_detail
+	IndexName - atomEnrollmentId_1_tenantId_1_test_type_1_percentCorrect_1_testCompletedAt_1
+	Query- {"atomEnrollmentId": 1, "tenantId": 1,"testType": 1,"percentCorrect":1, "testCompletedAt": 1}
+
+Database - ApolloReporting
+	Collection - test_detail
+	IndexName - atomEnrollmentId_1_tenantId_1_test_title_1_testCompletedAt_1
+	Query - {"atomEnrollmentId": 1, "tenantId": 1,"testTitle": 1,"testCompletedAt": 1}
+
+Database - ApolloReporting
+	Collection - non_utilized_test_detail
+	IndexName - enrollmentId_1_testName_1
+	Query - {"enrollmentId" : 1,"testName" : 1}
+
+
+Database - ApolloStaging
+	Collection - test_detail
+	IndexName - atomEnrollmentId_1_testName_1_attemptNumber_-1
+	Query - {"atomEnrollmentId" : 1,"testName" : 1, "attemptNumber" : -1}
+
+Database - ApolloStaging
+	Collection - test_detail
+	IndexName - enrollmentId_1_testName_1_attemptNumber_-1
+	Query - {"enrollmentId" : 1,"testName" : 1, "attemptNumber" : -1}
+	
+=========================== INDEX Creation Command from Mongoshell =================================
+2. InProgress
+db.test_detail.createIndex( { "atomEnrollmentId": 1, "tenantId": 1,"testType": 1,"percentCorrect":1, "testCompletedAt": 1 }, { "background": true, "name": "atomEnrollmentId_1_tenantId_1_test_type_1_percentCorrect_1_testCompletedAt_1" } );
+
+3. 
+db.test_detail.createIndex( { "atomEnrollmentId": 1, "tenantId": 1,"testTitle": 1,"testCompletedAt": 1 }, { "background": true, "name": "atomEnrollmentId_1_tenantId_1_test_title_1_testCompletedAt_1" } );
+
+4.
+db.test_detail.createIndex( { "enrollmentId" : 1,"testName" : 1 }, { "background": true, "name": "enrollmentId_1_testName_1" } );
+
+5.
+db.test_detail.createIndex( { "atomEnrollmentId" : 1,"testName" : 1, "attemptNumber" : -1 }, { "background": true, "name": "atomEnrollmentId_1_testName_1_attemptNumber_-1" } );
+
+6.
+db.test_detail.createIndex( { "enrollmentId" : 1,"testName" : 1, "attemptNumber" : -1 }, { "background": true, "name": "enrollmentId_1_testName_1_attemptNumber_-1" } );
+
+
+

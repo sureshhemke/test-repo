@@ -1,0 +1,204 @@
+========================================================================
+MongoDB Backup and Restore
+========================================================================
+MongoDB Backup
+--------------
+An important argument to mongodump is --db, which specifies the name of the database which you want to back up. 
+If you don’t specify a database name, mongodump backups all of your databases. 
+The second important argument is --out which specifies the directory in which the data will be dumped. 
+Let’s take an example with backing up the "ir_db" database and storing it in the /backup/mongobackups directory. 
+Ideally, we’ll have each of our backups in a directory with the current date like /backup/mongobackups/31-10-19 (31st October 2019). 
+First, let’s create that directory /backup/mongobackups with the command:
+
+1. Create directory
+[root@mondb3 /]# mkdir -p /backup/mongobackups
+2. Take backup without authentication (if mongo dont have auth enable):
+---------------------------------------------------------------------------------------
+[root@mondb3 /]# mongodump --db ir_db --out /backup/mongobackups/`date +"%d-%m-%y"`
+
+Command with authentication
+---------------------------------------------------------------------------------------
+[root@mondb3 /]#mongodump --db ir_db --out /backup/mongobackups/`date +"%d-%m-%y"` -u mongo-admin -p password --authenticationDatabase admin
+---------------------------------------------------------------------------------------
+
+A successfully executed backup will have an output such as:
+*****************************************************************************************************************
+2019-10-31T17:33:35.145+0530    writing ir_db.and_sorted_test to
+2019-10-31T17:33:35.146+0530    writing ir_db.DBEnvyLoad_customers to
+2019-10-31T17:33:35.146+0530    writing ir_db.DBEnvyLoad_products to
+2019-10-31T17:33:35.146+0530    writing ir_db.DBEnvyLoad_orders to
+2019-10-31T17:33:35.347+0530    [........................]     ir_db.DBEnvyLoad_orders   101/10000  (1.0%)
+2019-10-31T17:33:35.347+0530    [........................]       ir_db.and_sorted_test  101/900000  (0.0%)
+2019-10-31T17:33:35.347+0530    [........................]   ir_db.DBEnvyLoad_products    0/100000  (0.0%)
+2019-10-31T17:33:35.347+0530    [........................]  ir_db.DBEnvyLoad_customers    0/100000  (0.0%)
+2019-10-31T17:33:35.347+0530
+2019-10-31T17:33:35.431+0530    [########################]  ir_db.DBEnvyLoad_orders  10000/10000  (100.0%)
+2019-10-31T17:33:35.431+0530    done dumping ir_db.DBEnvyLoad_orders (10000 documents)
+2019-10-31T17:33:35.431+0530    writing ir_db.video_movies to
+2019-10-31T17:33:35.503+0530    done dumping ir_db.video_movies (3365 documents)
+2019-10-31T17:33:35.503+0530    writing ir_db.video_movieDetails to
+2019-10-31T17:33:35.739+0530    done dumping ir_db.video_movieDetails (2295 documents)
+*****************************************************************************************************************
+
+Note that in the above directory path we have used date +"%d-%m-%y" which gets the current date automatically. 
+This will allow us to have the backups inside the directory /backup/mongobackups/31-10-19. 
+Inside 31-10-19 dir you can see your directory name of your database. This is especially convenient when we automate the backups.
+
+There would be 2 files of each collection one is. json and 2nd is .bson
+
+You can shedule backup in crontab by using above commands also you can delete 7 days olde file using below command.
+---------------------------------------------------------------
+[root@mondb3 /]#find /var/backups/mongobackups/ -mtime +7 -exec rm -rf {} \;  <= u can add in crontabl aslo.
+---------------------------------------------------------------
+
+====================================
+Restoring and Migrating a MongoDB Database
+====================================
+By restoring your MongoDB database from a previous backup (such as one from the previous step) 
+you will be able to have the exact copy of your MongoDB information taken at a certain time, including all the indexes and data types. 
+
+As arguments we’ll specify first the name of the database with the --db argument. 
+Then with --drop we’ll make sure that the target database is first dropped so that the backup is restored in a clean database. 
+As a final argument we’ll specify the directory of the last backup /backup/mongobackups/31-10-19/ir_db/. 
+Use below command if auth is not enable:
+-----------------------------------------------------------------------------------------
+[root@mondb3 ir_db]# mongorestore --db ir_db --drop /backup/mongobackups/31-10-19/ir_db
+-----------------------------------------------------------------------------------------
+Use below command if auth is enabled
+------------------------------------------------------------------------------------------------------------------------------------------------
+[root@mondb3 ir_db]# mongorestore --db ir_db --drop /backup/mongobackups/31-10-19/ir_db -u mongo-admin -p password --authenticationDatabase admin
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Default when we execute "mongodump" without passing any argument. 
+This will create a "dump" directory in the current working directory containing all available databases.
+-----------------------------------
+[root@mongo-test ~]# mongodump
+-----------------------------------
+[root@mongo-test ~]# ls
+ dump 			<= inside dump you can see all dbs
+[root@mongo-test ~]#
+
+-------------------------
+Restore MongoDB Database
+-------------------------
+Previously backed up databases can be restored by specifying the path to the existing "dump" directory
+---------------------------------------
+[root@mongo-test ~]#mongorestore ./dump			<= this will restore all dbs
+---------------------------------------
+
+Restore specific database from backup
+----------------------------------------------------------------------
+[root@mongo-test ~]# mongorestore --drop --db ir_unix ./dump/ir_unix/ 	<= Specify Path of backup
+----------------------------------------------------------------------
+
+@Resotore database in new database name as "ir_unix" old name is "SampleCollections"
+
+#mongorestore --db new_database /dump/old_database <= This is path of your DB backup. All file will be in .josn format.
+-----------------------------------------------------------------
+[root@mondb3 /]#mongorestore --db ir_unix dump/SampleCollections
+-----------------------------------------------------------------
+===========================
+Backup a Single Collection
+===========================
+!! "ir_unix" is the name of the database and /backup/mongobackups/ is the directory 
+in which I want to dump the database and "video_reviews" is the name of the collection which I want to backup.
+-------------------------------------------------------------------------------------------------
+root@mongo-test ~]# mongodump --db ir_unix --out /backup/mongobackups/ --collection video_reviews
+-------------------------------------------------------------------------------------------------
+Output: 
+2019-10-31T19:50:06.483+0530    writing ir_unix.video_reviews to
+2019-10-31T19:50:06.485+0530    done dumping ir_unix.video_reviews (20 documents)
+[root@mongo-test ~]#
+
+@@Backup of collection with Auth enabled
+[root@mondb3 ir_db]# mongodump --db ir_unix --out /backup/mongobackups/ --collection video_reviews -u mongo-admin -p password --authenticationDatabase admin
+2019-10-31T20:11:35.955+0530    writing ir_unix.video_reviews to
+2019-10-31T20:11:36.010+0530    done dumping ir_unix.video_reviews (20 documents)
+[root@mondb3 ir_db]#
+
+===========================
+Restore Single Collection
+===========================
+!! "ir_unix" is the name of the database into which we will restore data and video_reviews is the name of the collection & then the path of the .bson file.
+----------------------------------------------------------------------------------------------------------------
+[root@mongo-test ~]#  mongorestore --db ir_unix -c video_reviews /backup/mongobackups/ir_unix/video_reviews.bson
+----------------------------------------------------------------------------------------------------------------
+Output:
+2019-10-31T20:03:28.349+0530    checking for collection data in /backup/mongobackups/ir_unix/video_reviews.bson
+2019-10-31T20:03:28.351+0530    reading metadata for ir_unix.video_reviews from /backup/mongobackups/ir_unix/video_reviews.metadata.json
+2019-10-31T20:03:28.487+0530    restoring ir_unix.video_reviews from /backup/mongobackups/ir_unix/video_reviews.bson
+2019-10-31T20:03:28.552+0530    no indexes to restore
+2019-10-31T20:03:28.552+0530    finished restoring ir_unix.video_reviews (20 documents)
+2019-10-31T20:03:28.552+0530    done
+[root@mongo-test ~]#
+
+@@Restoration of collection with Auth enabled
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+[root@mondb3 ir_db]# mongorestore --db ir_db -c video_reviews /backup/mongobackups/ir_db/video_reviews.bson -u mongo-admin -p password --authenticationDatabase admin
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Outpu: 
+2019-10-31T20:15:04.984+0530    checking for collection data in /backup/mongobackups/ir_db/video_reviews.bson
+2019-10-31T20:15:05.044+0530    reading metadata for ir_db.video_reviews from /backup/mongobackups/ir_db/video_reviews.metadata.json
+2019-10-31T20:15:05.352+0530    restoring ir_db.video_reviews from /backup/mongobackups/ir_db/video_reviews.bson
+2019-10-31T20:15:05.659+0530    no indexes to restore
+2019-10-31T20:15:05.659+0530    finished restoring ir_db.video_reviews (20 documents)
+2019-10-31T20:15:05.660+0530    done
+[root@mondb3 ir_db]#
+
+=====================================
+Backup in  compressed archive format
+=====================================
+---------------------------------------------------------------------------------------------
+[root@mongo-test ~]# mongodump --db ir_unix --archive=/backup/mongobackups/ir_unix.gz --gzip
+---------------------------------------------------------------------------------------------
+
+=====================================
+Restore compressed archive backup
+=====================================
+[root@mongo-test mnt]# mongorestore --db ir_unix --archive=/backup/mongobackups/ir_unix.gz --gzip
+
+=====================================
+Backup database with mongoexport
+=====================================
+--------------------------------------------------------------------------------------------------------------
+[root@mongo-test mnt]# mongoexport --db ir_unix -c Sakila_actors --out /backup/mongobackups/Sakila_actors.json
+--------------------------------------------------------------------------------------------------------------
+Outpu:
+2019-10-31T21:29:11.743+0530    connected to: localhost
+2019-10-31T21:29:11.752+0530    exported 200 records
+[root@mongo-test mnt]#
+
+With Auth
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+[root@mondb3 ir_db]# mongoexport --db ir_db -c Sakila_actors --out /backup/mongobackups/Sakila_actors.json  -u mongo-admin -p password --authenticationDatabase admin
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Output: 
+2019-10-31T21:30:20.243+0530    connected to: localhost
+2019-10-31T21:30:20.252+0530    exported 200 records
+[root@mondb3 ir_db]#
+
+=====================================
+Restore database with mongoimport
+=====================================
+---------------------------------------------------------------------------------------------------------------
+[root@mongo-test mnt]# mongoimport --db ir_unix -c Sakila_actors --file /backup/mongobackups/Sakila_actors.json
+---------------------------------------------------------------------------------------------------------------
+Output: 
+2019-10-31T21:37:52.408+0530    connected to: localhost
+2019-10-31T21:37:52.561+0530    imported 200 documents
+[root@mongo-test mnt]#
+
+With Auth
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+[root@mongo-test mnt]# mongoimport --db ir_unix -c Sakila_actors --file /backup/mongobackups/Sakila_actors.json -u mongo-admin -p password --authenticationDatabase admin
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Output: 
+2019-10-31T21:37:52.408+0530    connected to: localhost
+2019-10-31T21:37:52.561+0530    imported 200 documents
+
+=====================================
+Restore Data from CSV file with mongoimport
+=====================================
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+mongoimport -u mongo-admin -p password --db SHDB --collection suresh --type=csv --headerline --file=ratings_export.csv --authenticationDatabase admin
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------

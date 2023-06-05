@@ -1,0 +1,90 @@
+=======================================================================
+MongoDB Configuration Using SSL/TLS certificate
+=======================================================================
+
+Note: For production use, your MongoDB deployment should use valid certificates generated and signed by a single certificate authority.
+
+I choose to setup MongoDB with Certificate Validation that requires the creation of two .pem files – 
+one to use as PEMKeyFile and as CAFile parameters in my Mongo configuration file.
+
+@@ PEMKeyFile with the name of the .pem file that contains the signed TLS/SSL certificate and key.
+@@ CAFile with the name of the .pem file that contains the root certificate chain from the Certificate Authority.
+
+1. Create the Root Certificate
+   The Root Certificate will be used to sign and identify your certificate. To generate it, run the command below.
+   
+$ openssl req -nodes -out ca.pem -new -x509 -keyout ca.key
+
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+
+Keep the root certificate (aka CA File) and its key carefully, both will be used to sign your certificates. The root certificate might be used by your client as well.
+
+2. Generate the Certificate Requests and the Private Keys
+
+When generating the Certificate Signing Request (aka CSR), input the exact hostname (or IP) of your node in the Common Name (aka CN) field. 
+The others fields must have exactly the same value. You might need to modify your /etc/hosts file.
+
+The commands below will generate the CSR files and the RSA Private Keys (4096 bits).
+
+$ openssl req -nodes -newkey rsa:4096 -sha256 -keyout mongo-db.key -out mongo-db.csr
+
+You must now have 1 CSR and 1 Private Keys.
+
+[root@mongo-db key]# ls
+ ca.key  ca.pem  mongo-db.csr  mongo-db.key
+
+3. Sign your Certificate Requests
+
+Use the CA File (ca.pem) and its Private Key (ca.key) generated previously to sign each Certificate Request by running the commands below.
+
+$ openssl x509 -req -in mongo-db.csr -CA ca.pem -CAkey ca.key -set_serial 00 -out mongo-db.crt
+Output:
+Signature ok
+subject=/C=IN/ST=MH/L=Mumbai/O=FFCL/OU=IT/CN=mongo-db
+Getting CA Private Key
+
+You must sign CSR.
+
+Your must now have 1 CSR, 1 Private Keys and 1 self-signed Certificates. Only the Private Keys and the Certificates will be used by MongoDB.
+
+[root@mongo-db key]# ls
+ca.key  ca.pem mongo-db.crt  mongo-db.csr  mongo-db.key
+
+4. Concat each Node Certificate with its key
+
+Run the commands below to concat each Node Certificate with its key in one file (MongoDB requirement).
+
+$ cat mongo-db.key mongo-db.crt > mongo-db.pem
+
+Your must now have 1 PEM file.
+
+[root@mongo-db key]# ls
+ca.key  ca.pem  mongo-db.crt  mongo-db.csr  mongo-db.key  mongo-db.pem
+[root@mongo-db key]#
+
+
+
+MongoDB configuration
+----------------------
+
+We will assume that your pem files are located in your current folder as well as data/data1, data/data2 and data/data3.
+
+[root@mongo-db key]# pwd
+/data/mongod/key
+
+$ vi /etc/mongod.conf (Add below lines)
+
+net:
+  ssl:
+    mode: requireSSL
+    PEMKeyFile: /data/mongod/key/mongo-db.pem
+    CAFile: /data/mongod/key/ca.pem
+	
+Save file and restart the "mongod" Service.
+
+---------------------------------------------------	
+Connect mongod using mongo shell with TLS as below
+---------------------------------------------------
+
+$ mongo --ssl --sslCAFile /data/mongod/key/ca.pem --sslPEMKeyFile /data/mongod/key/mongo-db.pem --host localhost

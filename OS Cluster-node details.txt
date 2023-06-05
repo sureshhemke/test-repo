@@ -1,0 +1,42 @@
+
+node1 - 192.168.56.2
+
+node2 - 192.168.56.3
+
+node3 - 192.168.56.4 (Target)
+
+Cluster IP (VIP) : 192.168.56.100
+
+Network address to bind to : 192.168.56.0
+Multicast address (e.g.: 239.x.x.x) [239.220.30.235]
+
+Clusert User: hacluster
+Password: P@55w0rd
+
+OS Password: suse@123
+
+CentOS (vsftp)
+IP: 192.168.56.5
+User: root
+Pass: redhat@123
+==========================
+MongoDB
+
+mongo-ops-manager - 192.168.56.134
+user: root || Pass: redhat@123
+Web: http://192.168.56.134:8080
+username: sureshhemke
+Pass: redhat@123
+
+Ops manager
+DB user: mms-automation
+Pass: password
+
+mongdo-standalone
+DB user: mongo-admin & mongor
+Pass: psww0rd
+
+Ldap Password:
+Pass: password
+
+

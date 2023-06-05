@@ -1,0 +1,81 @@
+Upgrade Path:
+
+Mongo version 3.0.12 => 3.0.13 => 3.2.22 => set FCV to 3.4 and protocol version to pv1 and Then upgrade to => 3.6.23 ==> set FCV to 3.6 and then upgrade to ==> 4.0.28 ==> set FCV to 4.0/4.2 and then upgrade to ==> 4.2.23 ==> 4.4.18
+
+
+Note: 
+1. Till mongodb version 3.2.x there was not FCV. FCV incorporate from Mongodb 3.4 and default FCV is 3.2.
+2. Before upgrading 3.4.x to 3.6.x you need to updgrade FCV to 3.4 and then do the upgrade.
+3. Protocol version upgradation to pv1 is must before upgrade to 4.0.28
+2. Add the bindIP spesifically in conf file while upgradting to 3.6.0 version. It took lookup bydefault.
+4. Upgrade the protocol version to v1 on 3.6.x before updagrade to 4.0.x version
+5. PV1  is available in MongoDB version 3.2 or later and is the default for all new replica sets created with version 3.2 or later.
+
+Error for FCV while upgrading:
+2022-12-27T10:25:28.900+0000 F CONTROL  [initandlisten] ** IMPORTANT: UPGRADE PROBLEM: The data files need to be fully upgraded to version 3.4 before attempting an upgrade to 3.6; see http://dochub.mongodb.org/core/3.6-upgrade-fcv for more details.
+
+Other Way:
+==========
+1. Take a full dump from Mongo version 3.0.12
+Use below command
+$ mongodump --out /backup/ -u mongo-admin -p password --authenticationDatabase admin
+
+Verify the backup
+[mongo@ip-172-31-80-182 data]$ ls -lrta backup/
+total 4
+drwxr-xr-x.  6 mongo mongo   57 Jan 17 12:30 ..
+drwxrwxr-x. 11 mongo mongo  193 Jan 17 12:33 .
+drwxr-xr-x.  2 mongo mongo   55 Jan 17 12:33 SHDB
+drwxr-xr-x.  2 mongo mongo  128 Jan 17 12:33 admin
+drwxr-xr-x.  2 mongo mongo   77 Jan 17 12:33 sample_airbnb
+drwxr-xr-x.  2 mongo mongo  169 Jan 17 12:33 sample_analytics
+drwxr-xr-x.  2 mongo mongo   61 Jan 17 12:33 sample_geospatial
+drwxr-xr-x.  2 mongo mongo  251 Jan 17 12:33 sample_mflix
+drwxr-xr-x.  2 mongo mongo   51 Jan 17 12:33 sample_supplies
+drwxr-xr-x.  2 mongo mongo 4096 Jan 17 12:33 sample_training
+drwxr-xr-x.  2 mongo mongo   49 Jan 17 12:33 sample_weatherdata
+[mongo@ip-172-31-80-182 data]$
+
+2. Create a new standalone instance of Mongo version 4.4.18
+ 2.1 create a config file as below without auth. We will enable later it.
+ $vi /var/lib/mongodb-linux-x86_64-rhel70-4.4.18/bin/mongo.conf
+systemLog:
+   destination: file
+   path: "/var/lib/mongodb-linux-x86_64-rhel70-4.4.18/log/mongodb.log"
+   logAppend: true
+processManagement:
+   fork: true
+storage:
+   dbPath: "/data/db_4.4.18"
+   engine : wiredTiger
+   wiredTiger:
+      engineConfig:
+        cacheSizeGB: 1
+#security:
+#   keyFile: "/var/lib/mongodb-linux-x86_64-rhel70-3.0.12/bin/mongo-keyfile"
+net:
+   bindIp: 0.0.0.0
+   port: 27017
+#replication:
+#   replSetName: "nps_rset"
+#   oplogSizeMB: 2000
+#setParameter:
+#   enableLocalhostAuthBypass: false
+
+------------------------------------------
+ 2.2 Start instance with below command
+ $/var/lib/mongodb-linux-x86_64-rhel70-4.4.18/bin/mongod --config /var/lib/mongodb-linux-x86_64-rhel70-4.4.18/bin/mongo.conf
+ 
+ 2.3 Download MongoDB Database Tools to get the mongodump & mongorestore utility (current version is :100.6.1)
+ $ wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-rhel70-x86_64-100.6.1.tgz
+ $ tar -xvf mongodb-database-tools-rhel70-x86_64-100.6.1.tgz
+ 
+ 2.4 Restore Database into new instance using below command (This will restore full DB)
+ $ /opt/mongodb-database-tools-rhel70-x86_64-100.6.1/bin/mongorestore /data/backup/
+ 
+ 
+ 
+ 
+
+
+

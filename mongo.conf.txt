@@ -1,0 +1,23 @@
+systemLog:
+   destination: file
+   path: "/var/lib/mongodb-linux-x86_64-amazon-3.4.24/log/mongodb.log"
+   logAppend: true
+processManagement:
+   fork: true
+storage:
+   dbPath: "/data/db_3.4.24"
+   engine : wiredTiger
+   wiredTiger:
+      engineConfig:
+        cacheSizeGB: 1
+security:
+   authorization: enabled
+   keyFile: "/var/lib/mongodb-linux-x86_64-amazon-3.4.24/bin/mongo-keyfile"
+net:
+   bindIp: 0.0.0.0
+   port: 37017
+#replication:
+#   replSetName: "POC_REP"
+#   oplogSizeMB: 2000
+#setParameter:
+#   enableLocalhostAuthBypass: false
