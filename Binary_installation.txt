@@ -1,5 +1,5 @@
-Binary Installation :
---------------------
+Binary Installation Steps:
+-------------------------
 
 Dlownload link : https://www.mongodb.com/try/download/community
 
