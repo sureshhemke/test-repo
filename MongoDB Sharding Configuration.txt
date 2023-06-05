@@ -1,0 +1,483 @@
+================================================================
+MongoDB Sharding Configuration 
+================================================================
+
+Note: As per recomanation below number of servers are required in Productions.
+
+a. Mongos router 2 in HA
+b. Config servers 3 with replica set configured
+c. Minimum 2 shared setup. In each shared 3 servers with replica set configured.
+
+@ Pre- requisite @
+a. Disable selinux and iptables.
+b. Configured IP Add and hostname in /etc/hosts.
+===========(mongos-router)=============
+192.168.56.117 mongos-router
+==========(config srv with name "rs1")============
+192.168.56.114  mongo-configsrv1
+192.168.56.115  mongo-configsrv2
+192.168.56.116  mongo-configsrv3
+===========(Shared 1 with name "rs2")=============
+192.168.56.111  sharddrv1
+192.168.56.110  sharddrv2
+192.168.56.112  sharddrv3
+===========(Shared 2 with name "rs0")=============
+192.168.56.101  mondb1
+192.168.56.102  mondb2
+192.168.56.103  mondb3
+
+c. Installed mongodb packages on all above servers
+
+In our Env.
+1. Mongos router
+IP: 192.168.56.117 || Hostname: mongos-router
+
+2. Three Config servers
+IP: 192.168.56.114 || Hostname: mongo-configsrv1
+IP: 192.168.56.115 || Hostname: mongo-configsrv2
+IP: 192.168.56.116 || Hostname: mongo-configsrv3
+
+3. Two shared setup with two difrenet replica set as mentioned in pre-requisite
+
+4. Generate key with openssl in any location (our case /opt/mongo/mongo-keyfile) and  copy on all servers which are in sharding env.
+   This key will use for internal authenication.
+   Like a. mongos router b. config server c. shared servers.
+   
+   set the permission as shown in repclication configuration doc.
+   
+# openssl rand -base64 756 > /opt/mongo/mongo-keyfile
+
+5. Create admin user with root privileges across the all mongo servers.
+> db.createUser({
+	user: "mongo-admin",
+	pwd: "password",
+	roles:[{
+			role: "root",
+			db: "admin"}]
+		})
+		
+
+**********************************************************
+@ Configure Config servers with replica set@
+**********************************************************
+We need to be configured config server with replica set on 3 servers with passing below parametors in /etc/mongo.conf.
+# network interfaces
+net:
+  port: 27017
+  bindIp: 0.0.0.0  # Enter 0.0.0.0,:: to bind to all IPv4 and IPv6 addresses or, alternatively, use the net.bindIpAll setting.
+
+security:
+  keyFile: /opt/mongo/mongo-keyfile (This file need to be same across the servers for auth)
+
+replication:
+  replSetName: rs1 (This is config server replica set name)
+sharding:
+  clusterRole: configsvr (This is config server role)
+Once above configuration done all 3 server then initaite the replica configuration as shown in replica set configuration doc.
+
+**********************************************************
+@ Configure Sharding servers with replica set@
+**********************************************************
+Note: In our case there are two shared setup each sharded having 3 servers with replica set configured.
+
+We need to be configured 2 shared servers each shared 3 servers with replica set passing below parametors in /etc/mongo.conf.
+------------------------------------------------------
+On 1st shared. Below config shoud be on all 3 servers
+------------------------------------------------------
+# network interfaces
+net:
+  port: 27017
+#  bindIp: 127.0.0.1  # Enter 0.0.0.0,:: to bind to all IPv4 and IPv6 addresses or, alternatively, use the net.bindIpAll setting.
+  bindIp: 0.0.0.0  # Enter 0.0.0.0,:: to bind to all IPv4 and IPv6 addresses or, alternatively, use the net.bindIpAll setting.
+
+
+#security:
+security:
+  keyFile: /opt/mongo/mongo-keyfile (This file need to be same across the servers for auth)
+
+#operationProfiling:
+
+replication:
+ replSetName: rs0 (This is 1st shared server replica set name)
+
+sharding:
+  clusterRole: shardsvr (This is shared server role)
+
+------------------------------------------------------
+On 2nd shared. Below config shoud be on all 3 servers
+------------------------------------------------------
+# network interfaces
+net:
+  port: 27017
+  bindIp: 0.0.0.0  # Enter 0.0.0.0,:: to bind to all IPv4 and IPv6 addresses or, alternatively, use the net.bindIpAll setting.
+
+
+security:
+ keyFile: /opt/mongo/mongo-keyfile (This file need to be same across the servers for auth)
+#operationProfiling:
+
+replication:
+ replSetName: rs2	(This is 2nd shared server replica set name)
+sharding:
+ clusterRole: shardsvr	(This is shared server role)
+
+@@ Once above configuration done all 6 server then initaite the replica configuration as shown in replica set configuration doc.
+
+************************************************************************
+				Configure Mongos Query Router
+************************************************************************
+Discriptions:
+a. The query router obtains metadata from the config servers, caches it, and uses that metadata to send read and write queries to the correct shards.
+b. All steps here should be performed from your query router node. Since we’re only configuring one query router, we’ll only need to do this once. 
+   However, it’s also possible to use a replica set of query routers. If you’re using more than one (i.e., in a high availability setup), 
+   perform these steps on each query router nodes.
+
+1. Create a new configuration file called /etc/mongos.conf, and supply the following values:
+--------------------------------------------------------------------------------------------   
+[root@mongos-router mongo]# cat /etc/mongos.conf
+# where to write logging data.
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongos.log
+
+# network interfaces
+net:
+  port: 27017
+  bindIp: 0.0.0.0
+
+security:
+  keyFile: /opt/mongo/mongo-keyfile (This file should be same across all shared nodes)
+
+sharding:
+  configDB: rs1/mongo-configsrv1:27017,mongo-configsrv2:27017,mongo-configsrv3:27017 (Here u need to mentioned replica set name of your config servers & hostnames & port nu.)
+--------------------------------------------------------------------------------------------
+
+2. Create a new systemd unit file for mongos called /lib/systemd/system/mongos.service, with the following information:
+
+--------------------------------------------------------------------------------------------
+[root@mongos-router mongo]# cat /usr/lib/systemd/system/mongos.service
+[Unit]
+Description=Mongo Cluster Router
+After=network.target
+
+[Service]
+User=mongod		(here your mongod user. U need to change as per your user)
+Group=mongod	(here your mongod group. U need to change as per your user)
+ExecStart=/usr/bin/mongos --config /etc/mongos.conf
+# file size
+LimitFSIZE=infinity
+# cpu time
+LimitCPU=infinity
+# virtual memory size
+LimitAS=infinity
+# open files
+LimitNOFILE=64000
+# processes/threads
+LimitNPROC=64000
+# total threads (user+kernel)
+TasksMax=infinity
+TasksAccounting=false
+
+[Install]
+WantedBy=multi-user.target
+--------------------------------------------------------------------------------------------
+3. The mongos service needs to obtain data locks that conflicts with mongod, so be sure mongod is stopped before proceeding:
+
+	#systemctl stop mongod
+
+4. Enable mongos.service so that it automatically starts on reboot, and then initialize the mongos:
+
+	#systemctl enable mongos.service
+	#systemctl start mongos
+
+5. Confirm that mongos is running:
+	You should see output similar to this:
+[root@mongos-router mongo]# systemctl status mongos
+mongos.service - Mongo Cluster Router
+   Loaded: loaded (/usr/lib/systemd/system/mongos.service; enabled)
+   Active: active (running) since Thu 2019-10-24 16:08:57 IST; 1 day 1h ago
+ Main PID: 14601 (mongos)
+   CGroup: /system.slice/mongos.service
+           +-14601 /usr/bin/mongos --config /etc/mongos.conf
+		   
+*************************************************************************
+					Add Shards to the Cluster
+*************************************************************************
+Now that the query router is able to communicate with the config servers, 
+we must enable sharding so that the query router knows which servers will host the distributed data and where any given piece of data is located.
+
+1. From one of your shard servers / from local mongos server, connect to the query router we configured above:
+------------------------------------------------------------------------------------------------------
+[root@mongos-router mongo]# mongo mongos-router:27017 -u mongo-admin -p --authenticationDatabase admin
+------------------------------------------------------------------------------------------------------
+If your query router has a different hostname,usernaem, substitute that in the command.
+
+2. You can add each shard server individually from mongos console as below
+
+mongos> sh.addShard("rs2/sharddrv1:27017")
+mongos> sh.addShard("rs2/sharddrv2:27017")
+mongos> sh.addShard("rs2/sharddrv3:27017")
+
+mongos> sh.addShard("rs0/mondb1:27017")
+mongos> sh.addShard( "rs0/mondb2:27017")
+mongos> sh.addShard( "rs0/mondb3:27017")
+	OR 
+	You can add 
+3. Optionally, if you configured replica sets for each shard instead of single servers, you can add them at this stage with a similar command:
+
+mongos> sh.addShard( "rs0/mondb1:27017,mondb2:27017,mondb3:27017" )
+mongos> sh.addShard( "rs2/sharddrv1:27017,sharddrv2:27017,sharddrv3:27017" )
+======
+Notes: Be sure to modify the hostnames and replica set name in the above command if appropriate.
+======
+
+In this format, rs0 is name of the replica set for the first shard (mondb1 <primary>,mondb2,mondb1). Always 1st give the primary hostname.
+				rs2 is name of the replica set for the 2nd shard (sharddrv1 <primary>,sharddrv2,sharddrv2).
+Here "mondb1" & "sharddrv1" this is our Primary servers.
+
+If you have any error while adding servers in shard. Check mongo logs on config server 
+
+Out put of mongos> sh.status() before add shared.
+----------------------------------------------------------------------------------------
+mongos> sh.status()
+--- Sharding Status ---
+  sharding version: {
+        "_id" : 1,
+        "minCompatibleVersion" : 5,
+        "currentVersion" : 6,
+        "clusterId" : ObjectId("5daf2f28cc8486f67515d8b6")
+  }
+  shards:
+  active mongoses:
+  autosplit:
+        Currently enabled: yes
+  balancer:
+        Currently enabled:  yes
+        Currently running:  no
+        Failed balancer rounds in last 5 attempts:  0
+        Migration Results for the last 24 hours:
+                No recent migrations
+  databases:
+        {  "_id" : "config",  "primary" : "config",  "partitioned" : true }
+----------------------------------------------------------------------------------------
+
+Out put of mongos> sh.status() after add shared.
+
+----------------------------------------------------------------------------------------
+mongos> sh.status()
+--- Sharding Status ---
+  sharding version: {
+        "_id" : 1,
+        "minCompatibleVersion" : 5,
+        "currentVersion" : 6,
+        "clusterId" : ObjectId("5daf2f28cc8486f67515d8b6")
+  }
+  shards:
+        {  "_id" : "rs0",  "host" : "rs0/mondb1:27017,mondb2:27017,mondb3:27017",  "state" : 1                                                                          }
+        {  "_id" : "rs2",  "host" : "rs2/sharddrv1:27017,sharddrv2:27017,sharddrv3:27017",  "st                                                                         ate" : 1 }
+  active mongoses:
+        "4.0.12" : 1
+  autosplit:
+        Currently enabled: yes
+  balancer:
+        Currently enabled:  yes
+        Currently running:  yes
+        Failed balancer rounds in last 5 attempts:  0
+        Migration Results for the last 24 hours:
+                No recent migrations
+  databases:
+        {  "_id" : "NM_DB",  "primary" : "rs0",  "partitioned" : false,  "version" : {  "uuid"                                                                          : UUID("1fee4a5b-0e6f-4289-b6cd-8dd07561be67"),  "lastMod" : 1 } }
+        {  "_id" : "config",  "primary" : "config",  "partitioned" : true }
+        {  "_id" : "suresh_tech",  "primary" : "rs0",  "partitioned" : false,  "version" : {  "                                                                         uuid" : UUID("06fc89bd-072c-49c7-bc76-349ee4b21f5d"),  "lastMod" : 1 } }
+
+----------------------------------------------------------------------------------------
+Below are the changes post successfully add shards.
+
+shards:
+        {  "_id" : "rs0",  "host" : "rs0/mondb1:27017,mondb2:27017,mondb3:27017",  "state" : 1                                                                          }
+        {  "_id" : "rs2",  "host" : "rs2/sharddrv1:27017,sharddrv2:27017,sharddrv3:27017",  "st 
+balancer:
+        Currently enabled:  yes
+        Currently running:  yes
+
+databases:
+        {  "_id" : "NM_DB",  "primary" : "rs0",  "partitioned" : false,  "version" : {  "uuid"                                                                          : UUID("1fee4a5b-0e6f-4289-b6cd-8dd07561be67"),  "lastMod" : 1 } }
+        {  "_id" : "config",  "primary" : "config",  "partitioned" : true }
+        {  "_id" : "suresh_tech",  "primary" : "rs0",  "partitioned" : false,  "version" : {  "   
+
+====================================================================================
+						Configure Sharding
+====================================================================================
+At this stage, the components of your cluster are all connected and communicating with one another. 
+The final step is to enable sharding. Enabling sharding takes place in stages due to the organization of data in MongoDB. 
+To understand how data will be distributed, let’s briefly review the main data structures:
+
+a. Databases - The broadest data structure in MongoDB, used to hold groups of related data.
+b. Collections - Analogous to tables in traditional relational database systems, collections are the data structures that comprise databases
+c. Documents - The most basic unit of data storage in MongoDB. 
+   Documents use JSON format for storing data using key-value pairs that can be queried by applications
+====================================   
+Enable Sharding at Database Level
+====================================
+First, we’ll enable sharding at the database level, which means that collections in a given database can be distributed among different shards.
+
+1. Access the mongos shell on your query router. This can be done from any server in your cluster:
+
+[root@mongos-router mongo]# mongo mongos-router:27017 -u mongo-admin -p --authenticationDatabase admin
+
+2. From the mongos shell, use your database. In our case NM_DB:
+
+mongos> use NM_DB
+3. Enable sharding on the new database:
+mongos> sh.enableSharding("NM_DB")
+Output: 
+{
+        "ok" : 1,
+        "operationTime" : Timestamp(1572021585, 3),
+        "$clusterTime" : {
+                "clusterTime" : Timestamp(1572021585, 3),
+                "signature" : {
+                        "hash" : BinData(0,"9htz0cuWEAWG8mk3cj5iqjEjTqk="),
+                        "keyId" : NumberLong("6750666215296860172")
+                }
+        }
+}
+mongos>
+
+4. To verify that the sharding was successful, first switch to the config database:
+mongos> use config
+
+Next, run a find() method on your databases:
+mongos> db.databases.find()
+
+Output: 
+{ "_id" : "NM_DB", "primary" : "rs0", "partitioned" : true, "version" : { "uuid" : UUID("1fee4a5b-0e6f-4289-b6cd-8dd07561be67"), "lastMod" : 1 } }
+{ "_id" : "suresh_tech", "primary" : "rs0", "partitioned" : false, "version" : { "uuid" : UUID("06fc89bd-072c-49c7-bc76-349ee4b21f5d"), "lastMod" : 1 } }
+
+This will return a list of all databases with some information about them. 
+In our case, there should be two entry for the "NM_DB" and "suresh_tech" database as show above. 
+We enable sharding on "NM_DB", So you can see "partitioned" : true and on "suresh_tech" "partitioned" : false,
+Also we can see the location of shard where the DB is. here "rs0"
+
+
+=================================================================
+			Sharding Strategy
+=================================================================
+Before we enable sharding for a collection, we’ll need to decide on a sharding strategy. 
+When data is distributed among the shards, MongoDB needs a way to sort it and know which data is on which shard.
+To do this, it uses a shard key, a designated field in your documents that is used by the mongos query router know where a given piece of data is stored. 
+The two most common sharding strategies are range-based and hash-based.
+
+--------------------------
+Range-based sharding
+--------------------------
+Range-based sharding divides your data based on specific ranges of values in the shard key. 
+For example, you may have a collection of customers and associated address. 
+If you use range-based sharding, the ZIP code may be a good choice for the shard key. 
+This would distribute customers in a specified range of ZIP codes on the same shard. 
+This may be a good strategy if your application will be running queries to find customers near each other when planning deliveries, 
+for example. The downside to this is if your customers are not evenly distributed geographically, 
+your data storage may rely too heavily on one shard, so it’s important to analyze your data carefully before choosing a shard key.
+Another important factor to consider is what kinds of queries you’ll be running, however. 
+When properly utilized, range-base sharding is generally a better option when your application will be performing many complex read queries.
+
+--------------------------
+Hash-based sharding
+--------------------------
+Hash-based sharding distributes data by using a hash function on your shard key for a more even distribution of data among the shards. 
+Suppose again that you have a collection of customers and addresses. In a hash-based sharding setup, you may choose a customer ID number, 
+for example, as the shard key. This number is transformed by a hash function, 
+and the results of the hashing are what determines which shard the data is stored on. 
+Hash-based sharding is a good strategy in situations where your application will mostly perform write operations, 
+or if your application needs only to run simple read queries like looking up only a few specific customers at a time.
+
+==========================================================================================
+				Enable Sharding at Collection Level
+==========================================================================================
+Now that the database is available for sharding and we’ve chosen a strategy, we need to enable sharding at the collections level. 
+This allows the documents within a collection to be distributed among your shards. 
+We’ll use a hash-based sharding strategy for simplicity.
+
+1. Connect to the mongo shell on your query router if you’re not already there:
+
+[root@mongos-router mongo]# mongo mongos-router:27017 -u mongo-admin -p --authenticationDatabase admin
+
+2. Switch to the NM_DB database we created previously:
+   mongos> use NM_DB
+   
+3. Create a new collection called exampleCollection and hash its _id key. The _id key is already created by default as a basic index for new documents:
+   mongos> db.exampleCollection.ensureIndex( { _id : "hashed" } )
+
+4. Finally, shard the collection:
+
+mongos> sh.shardCollection( "NM_DB.exampleCollection", { "_id" : "hashed" } )
+Outpu:
+{
+        "collectionsharded" : "NM_DB.exampleCollection",
+        "collectionUUID" : UUID("ce41127a-77c4-465c-a424-bc04dc8fa5f0"),
+        "ok" : 1,
+        "operationTime" : Timestamp(1572443484, 9),
+        "$clusterTime" : {
+                "clusterTime" : Timestamp(1572443484, 9),
+                "signature" : {
+                        "hash" : BinData(0,"8bb3s6tbpuoB027HdKqbatCJLnc="),
+                        "keyId" : NumberLong("6750666215296860172")
+                }
+        }
+}
+mongos>
+
+=============================================================================
+				Test Your Cluster
+=============================================================================
+1. Connect to the mongo shell on your query router if you’re not already there:
+
+[root@mongos-router mongo]# mongo mongos-router:27017 -u mongo-admin -p --authenticationDatabase admin
+
+2. Switch to your NM_DB database:
+   mongos>use NM_DB
+
+3. Run the following code in the mongo shell to generate 500 simple documents and insert them into exampleCollection:
+
+   mongos>for (var i = 1; i <= 500; i++) db.exampleCollection.insert( { x : i } )
+
+4. Check your data distribution:   
+
+   mongos> db.exampleCollection.getShardDistribution()  <= This allows you to see how a collection is distributed across your shards.
+Outpu:
+Shard rs0 at rs0/mondb1:27017,mondb2:27017,mondb3:27017
+ data : 8KiB docs : 262 chunks : 2
+ estimated data per chunk : 4KiB
+ estimated docs per chunk : 131
+
+Shard rs2 at rs2/sharddrv1:27017,sharddrv2:27017,sharddrv3:27017
+ data : 7KiB docs : 238 chunks : 2
+ estimated data per chunk : 3KiB
+ estimated docs per chunk : 119
+
+Totals
+ data : 16KiB docs : 500 chunks : 4
+ Shard rs0 contains 52.4% data, 52.4% docs in cluster, avg obj size on shard : 33B
+ Shard rs2 contains 47.6% data, 47.6% docs in cluster, avg obj size on shard : 33B
+mongos>
+  mongos>db.stats() <= This works very similarly to the way it does in a standard replicaset, except it breaks down the output for each shard which is helpful for tracking data sizes.
+  
+The sections beginning with Shard give information about each shard in your cluster. 
+Since we only added two shards there are only two sections, but if you add more shards to the cluster, they’ll show up here as well. 
+The Totals section provides information about the collection as a whole, including its distribution among the shards. 
+Notice that distribution is not perfectly equal. The hash function does not guarantee absolutely even distribution, 
+but with a carefully chosen shard key it will usually be fairly close.
+
+
+
+
+
+
+
+
+
+
+
+
+

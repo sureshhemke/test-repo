@@ -1,0 +1,158 @@
+MongoDB Vs MySQL: The Differences 
+========================================
+
+1 ) Difference Between MongoDB and MySQL ?
+2 ) What is Nosql ?
+
+MongoDB		-  Primary - Secodanry - json 
+Cassandra	-  Primary - Primary   - rdms
+Couchbase	
+DynamoDB	
+DocumentDB - AWS - mongodb  
+
+MySQL
+MySQL is an open-source relational database management system (RDBMS).
+
+MongoDB
+MongoDB is an open source cross-platform leading NoSQL database management Tool
+
+MySQL
+MySQL is written in C and C++. So C language programs are perfectly suitable for this platform.
+MySQL uses the Structured Query Language (SQL).
+
+MongoDB
+MongoDB is written in C, C++ and JavaScript. That’s why it is easy to use by most of the language programs.
+MongoDB uses JavaScript as query language 
+
+MySQL
+MySQL platform is based on the relational database management system (RDBMS).
+
+MonoDB
+MongoDB is fully document-oriented database management system(DBMS).	
+
+MySQL
+MySQL create the table by using SQL (structured query language) to store its data. You have to maintain that all the same structured rows are in the table with same values and represent an exact data type.
+
+MongoDB
+MongoDB creates JSON-like structured documents to store data. You don’t need to specify the structure of the document and can easily change the structure by adding or deleting fields.	
+
+MySQL			MongoDB
+
+Table			Collection
+Row			Document
+Column			Field 
+Joins			Embedded documents, linking 
+
+-----------------
+
+Who Uses These Databases?
+MySQL: MySQL has been maturing since 1995 and has grown a large following. Some organizations that use MySQL include Pinterest, Twitter, YouTube, Netflix, Spotify, US Navy, NASA, Walmart, and Paypal.
+
+MongoDB: MongoDB was released in 2009 and is used by many organizations including Klout, Citrix, Twitter, T-Mobile, Zendesk, Sony, Hootsuite, SurveyMonkey, MuleSoft, Foursquare, and InVision.
+
+-----------------
+
+What Types Of Replication / Clustering Are Available?
+MySQL: MySQL supports master – slave replication and master – master replication (as of MySQL 5.7.6 and later). Multisource replication allows you to replicate from several masters in parallel.
+
+MongoDB: MongoDB supports built-in replication, sharding, and auto-elections. Using auto-elections, you can set up a secondary database to automatically take over if the primary database fails. Sharding allows for horizontal scaling, which is difficult to implement in MySQL.
+
+-----------------
+
+How Are Their Queries Different?
+
+Selecting records from the customer table:
+
+MySQL: 
+SELECT * FROM customer
+
+MongoDB: 
+db.customer.find()
+---------
+Inserting records into the customer table:
+
+MySQL: 
+INSERT INTO customer (cust_id, branch, status) VALUES ('appl01', 'main', 'A')
+
+MongoDB: 
+db.customer.insert({cust_id: 'appl01',branch: 'main',status: 'A'})
+---------
+Updating records in the customer table:
+
+MySQL: 
+UPDATE customer SET branch = 'main' WHERE custage > 2 
+
+MongoDB:  
+db.customer.update({
+      custage: { $gt: 2 }
+  }, 
+  {
+      $set: { branch:'main' }
+  }, 
+  {
+      multi: true
+})
+-----------------
+
+Who Provides Support?
+MySQL: MySQL offers Oracle Lifetime Support at three levels: Premier for versions 1 - 5 years old, Extended for versions 6 - 8 years old, and Sustain for those that want to use the same version for 9+ years. Each level offers 24 x 7 support with knowledge base, maintenance releases, bug fixes, patches, and updates.
+
+MongoDB: MongoDB offers Enterprise Grade Support that "extends beyond break/fix". This gives you 24 x 7 support as well as an extended lifecycle support add-on, which allows you the flexibility to upgrade to newer versions at your own pace. Support for MongoDB gives you unlimited access to support, security fixes, updates, and more.
+
+----------------
+
+Who Supplies Ongoing Development?
+MySQL: Ongoing development is done by the Oracle Corporation.
+
+MongoDB: Ongoing development is done by MongoDB, Inc.
+
+----------------
+
+
+Storage Engines :
+
+The storage engine is the component of the database that is responsible for managing how data is stored, both in memory and on disk
+
+WiredTiger Storage Engine (Default)
+	WiredTiger is the default storage engine starting in MongoDB 3.2. 
+	It is well-suited for most workloads and is recommended for new deployments. 
+	WiredTiger provides a document-level concurrency model, checkpointing, and compression, among other features.
+	In MongoDB Enterprise, WiredTiger also supports Encryption at Rest. See Encrypted Storage Engine.
+
+In-Memory Storage Engine
+	In-Memory Storage Engine is available in MongoDB Enterprise. Rather than storing documents on-disk, 
+	it retains them in-memory for more predictable data latencies.
+
+MMAPv1 Storage Engine (Deprecated as of MongoDB 4.0)
+	MMAPv1 is the default storage engine for MongoDB versions 3.0 and earlier.
+	Collections-level Locking 
+
+----------------
+
+Journaling :
+
+WiredTiger uses checkpoints to provide a consistent view of data on disk and allow MongoDB to recover from the last checkpoint. 
+However, if MongoDB exits unexpectedly in between checkpoints, journaling is required to recover information that occurred after the last checkpoint.
+
+WiredTiger journal files for MongoDB have a maximum size limit of approximately 100 MB.
+
+Once the file exceeds that limit, WiredTiger creates a new journal file.
+WiredTiger automatically removes old journal files to maintain only the files needed to recover from last checkpoint.
+
+
+----------------
+
+
+Imp Link :
+
+https://www.guru99.com/mongodb-vs-mysql.html
+https://www.geeksforgeeks.org/mongodb-vs-mysql/
+https://blog.panoply.io/mongodb-and-mysql
+https://www.geeksforgeeks.org/mongodb-vs-mysql/
+https://docs.mongodb.com/v4.0/core/storage-engines/
+https://docs.mongodb.com/v4.0/core/journaling/
+
+Query converter from sql to mongo  
+
+https://klaus.dk/sqltomongodb/
+

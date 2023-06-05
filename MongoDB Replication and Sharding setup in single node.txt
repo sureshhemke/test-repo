@@ -1,0 +1,429 @@
+
+TEST Server : 172.16.2.51  root/root123
+Tested on MongoDB version : MongoDB shell version: 3.0.14
+
+----------
+sharad 1
+----------
+
+mongod --shardsvr --replSet shard1 --dbpath /mnt/vol1/shard1/shard1a --logpath /mnt/vol1/shard1/shard1a.log -port 27021 --fork
+mongod --shardsvr --replSet shard1 --dbpath /mnt/vol1/shard1/shard1b --logpath /mnt/vol1/shard1/shard1b.log -port 27022 --fork
+mongod --shardsvr --replSet shard1 --dbpath /mnt/vol1/shard1/shard1c --logpath /mnt/vol1/shard1/shard1c.log -port 27023 --fork
+
+
+In one command window, give the following command:
+mongo --port 27021
+
+config = {_id: 'shard1', members: [
+{_id: 0, host: 'localhost:27021'},
+{_id: 1, host: 'localhost:27022'},
+{_id: 2, host: 'localhost:27023'},
+] }
+
+rs.initiate (config)
+
+rs.status()
+
+===================
+----------
+sharad 2
+----------
+
+mongod --shardsvr --replSet shard2 --dbpath /mnt/vol1/shard2/shard2a --logpath /mnt/vol1/shard2/shard2a.log -port 27031 --fork
+mongod --shardsvr --replSet shard2 --dbpath /mnt/vol1/shard2/shard2b --logpath /mnt/vol1/shard2/shard2b.log -port 27032 --fork
+mongod --shardsvr --replSet shard2 --dbpath /mnt/vol1/shard2/shard2c --logpath /mnt/vol1/shard2/shard2c.log -port 27033 --fork
+
+
+mongo --port 27031
+
+config = {_id: 'shard2', members: [
+{_id: 0, host: 'localhost:27031'},
+{_id: 1, host: 'localhost:27032'},
+{_id: 2, host: 'localhost:27033'},
+] }
+
+rs.initiate (config)
+
+rs.status()
+
+========================
+---------------
+config servers
+---------------
+
+mongod --configsvr --replSet config_server --dbpath /mnt/vol1/config1 --logpath /mnt/vol1/config1.log --port 27041 --fork
+mongod --configsvr --replSet config_server --dbpath /mnt/vol1/config2 --logpath /mnt/vol1/config2.log --port 27042 --fork
+mongod --configsvr --replSet config_server --dbpath /mnt/vol1/config3 --logpath /mnt/vol1/config3.log --port 27043 --fork
+
+config = {_id: 'config_server', members: [
+{_id: 0, host: 'localhost:27041'},
+{_id: 1, host: 'localhost:27042'},
+{_id: 2, host: 'localhost:27043'},
+] }
+
+rs.initiate (config)
+
+rs.status()
+
+
+mongos --logpath /var/log/mongos.log --configdb config_server/localhost:27041,localhost:27042,localhost:27043 --fork
+
+========================
+------
+mongo
+-------
+
+db.adminCommand ( {addshard: 'shard1/localhost:27021'} )
+
+db.adminCommand ( {addshard: 'shard2/localhost:27031'} )
+
+db.adminCommand ( {enableSharding: 'test'} )
+
+sh.status()
+==========================
+
+
+==============================
+6 sharad servers
+3 config servers
+1 mongos
+================================
+mongos> use admin
+switched to db admin
+mongos> db.runCommand("getShardMap")
+{
+        "map" : {
+                "config" : "localhost:27041,localhost:27042,localhost:27043",
+                "localhost:27021" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "localhost:27022" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "localhost:27023" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "localhost:27031" : "shard2/localhost:27031,localhost:27032,localhost:27033",
+                "localhost:27032" : "shard2/localhost:27031,localhost:27032,localhost:27033",
+                "localhost:27033" : "shard2/localhost:27031,localhost:27032,localhost:27033",
+                "shard1" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "shard1/localhost:27021,localhost:27022,localhost:27023" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "shard2" : "shard2/localhost:27031,localhost:27032,localhost:27033",
+                "shard2/localhost:27031,localhost:27032,localhost:27033" : "shard2/localhost:27031,localhost:27032,localhost:27033"
+        },
+        "ok" : 1
+}
+===============================
+[root@DBVM1 ~]# ps -ef |grep -i mongo
+
+root     21512     1  0 13:21 ?        00:00:17 mongod --shardsvr --replSet shard1 --dbpath /mnt/vol1/shard1/shard1a --logpath /mnt/vol1/shard1/shard1a.log -port 27021 --fork
+root     21528     1  0 13:21 ?        00:00:16 mongod --shardsvr --replSet shard1 --dbpath /mnt/vol1/shard1/shard1b --logpath /mnt/vol1/shard1/shard1b.log -port 27022 --fork
+root     21544     1  0 13:21 ?        00:00:16 mongod --shardsvr --replSet shard1 --dbpath /mnt/vol1/shard1/shard1c --logpath /mnt/vol1/shard1/shard1c.log -port 27023 --fork
+root     21935     1  0 13:27 ?        00:00:13 mongod --shardsvr --replSet shard2 --dbpath /mnt/vol1/shard2/shard2a --logpath /mnt/vol1/shard2/shard2a.log -port 27031 --fork
+root     21962     1  0 13:28 ?        00:00:12 mongod --shardsvr --replSet shard2 --dbpath /mnt/vol1/shard2/shard2b --logpath /mnt/vol1/shard2/shard2b.log -port 27032 --fork
+root     21989     1  0 13:28 ?        00:00:10 mongod --shardsvr --replSet shard2 --dbpath /mnt/vol1/shard2/shard2c --logpath /mnt/vol1/shard2/shard2c.log -port 27033 --fork
+root     22499     1  0 13:33 ?        00:00:04 mongod --configsvr --dbpath /mnt/vol1/config1 --logpath /mnt/vol1/config1.log --port 27041 --fork
+root     22515     1  0 13:33 ?        00:00:04 mongod --configsvr --dbpath /mnt/vol1/config2 --logpath /mnt/vol1/config2.log --port 27042 --fork
+root     22531     1  0 13:33 ?        00:00:05 mongod --configsvr --dbpath /mnt/vol1/config3 --logpath /mnt/vol1/config3.log --port 27043 --fork
+root     22824     1  0 13:37 ?        00:00:01 mongos --logpath /var/log/mongos.log --configdb localhost:27041,localhost:27042,localhost:27043 --fork
+=================================
+
+
+MongoDB Sharding Analysis
+-------------------------
+
+[root@DBATCNTLL01 ~]# mongo --version
+MongoDB shell version: 3.0.14
+[root@DBATCNTLL01 ~]#
+[root@DBATCNTLL01 ~]#
+[root@DBATCNTLL01 ~]# ps -ef | grep -i mongo
+root      2550     1  0 Apr11 ?        03:43:53 mongod --shardsvr --replSet shard1 --dbpath /opt/shard1/shard1a --logpath /opt/shard1/shard1a.log -port 27021 --fork
+root      2570     1  0 Apr11 ?        03:33:24 mongod --shardsvr --replSet shard1 --dbpath /opt/shard1/shard1b --logpath /opt/shard1/shard1b.log -port 27022 --fork
+root      2586     1  0 Apr11 ?        03:33:39 mongod --shardsvr --replSet shard1 --dbpath /opt/shard1/shard1c --logpath /opt/shard1/shard1c.log -port 27023 --fork
+root      2951     1  0 Apr11 ?        03:37:00 mongod --shardsvr --replSet shard2 --dbpath /opt/shard2/shard2a --logpath /opt/shard2/shard2a.log -port 27031 --fork
+root      2981     1  0 Apr11 ?        03:37:58 mongod --shardsvr --replSet shard2 --dbpath /opt/shard2/shard2b --logpath /opt/shard2/shard2b.log -port 27032 --fork
+root      3022     1  0 Apr11 ?        03:36:18 mongod --shardsvr --replSet shard2 --dbpath /opt/shard2/shard2c --logpath /opt/shard2/shard2c.log -port 27033 --fork
+root      3423     1  0 Apr11 ?        03:29:54 mongod --configsvr --dbpath /opt/config1 --logpath /opt/config1.log --port 27041 --fork
+root      3463     1  0 Apr11 ?        03:24:46 mongod --configsvr --dbpath /opt/config2 --logpath /opt/config2.log --port 27042 --fork
+root      3502     1  0 Apr11 ?        03:26:54 mongod --configsvr --dbpath /opt/config3 --logpath /opt/config3.log --port 27043 --fork
+root      3607     1  0 Apr11 ?        01:44:27 mongos --logpath /var/log/mongos.log --configdb localhost:27041,localhost:27042,localhost:27043 --fork
+root     57108 57036  0 23:12 pts/1    00:00:00 grep -i mongo
+[root@DBATCNTLL01 ~]#
+[root@DBATCNTLL01 ~]#
+[root@DBATCNTLL01 ~]# mongo
+MongoDB shell version: 3.0.14
+connecting to: test
+Server has startup warnings:
+2017-04-11T18:14:41.520+0530 I CONTROL  ** WARNING: You are running this process as the root user, which is not recommended.
+2017-04-11T18:14:41.520+0530 I CONTROL
+mongos>
+mongos>
+mongos> use admin
+switched to db admin
+mongos>
+mongos>
+mongos> show dbs
+admin     0.016GB
+config    0.016GB
+dbTest    0.078GB
+satish    0.078GB
+students  0.078GB
+test      0.078GB
+mongos>
+mongos> sh.status()
+--- Sharding Status ---
+  sharding version: {
+        "_id" : 1,
+        "minCompatibleVersion" : 5,
+        "currentVersion" : 6,
+        "clusterId" : ObjectId("58eccfbf8cb05b16dccd4774")
+}
+  shards:
+        {  "_id" : "shard1",  "host" : "shard1/localhost:27021,localhost:27022,localhost:27023" }
+        {  "_id" : "shard2",  "host" : "shard2/localhost:27031,localhost:27032,localhost:27033" }
+  balancer:
+        Currently enabled:  yes
+        Currently running:  no
+        Failed balancer rounds in last 5 attempts:  0
+        Migration Results for the last 24 hours:
+                No recent migrations
+  databases:
+        {  "_id" : "admin",  "partitioned" : false,  "primary" : "config" }
+        {  "_id" : "test",  "partitioned" : false,  "primary" : "shard2" }
+        {  "_id" : "satish",  "partitioned" : true,  "primary" : "shard2" }
+        {  "_id" : "dbTest",  "partitioned" : true,  "primary" : "shard2" }
+        {  "_id" : "students",  "partitioned" : true,  "primary" : "shard2" }
+                students.grades
+                        shard key: { "student_id" : 1 }
+                        chunks:
+                                shard2  1
+                        { "student_id" : { "$minKey" : 1 } } -->> { "student_id" : { "$maxKey" : 1 } } on : shard2 Timestamp(1, 0)
+
+mongos>
+
+
+
+mongos> use admin
+switched to db admin
+mongos>
+mongos> db.runCommand("getShardMap")
+{
+        "map" : {
+                "config" : "localhost:27041,localhost:27042,localhost:27043",
+                "localhost:27021" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "localhost:27022" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "localhost:27023" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "localhost:27031" : "shard2/localhost:27031,localhost:27032,localhost:27033",
+                "localhost:27032" : "shard2/localhost:27031,localhost:27032,localhost:27033",
+                "localhost:27033" : "shard2/localhost:27031,localhost:27032,localhost:27033",
+                "shard1" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "shard1/localhost:27021,localhost:27022,localhost:27023" : "shard1/localhost:27021,localhost:27022,localhost:27023",
+                "shard2" : "shard2/localhost:27031,localhost:27032,localhost:27033",
+                "shard2/localhost:27031,localhost:27032,localhost:27033" : "shard2/localhost:27031,localhost:27032,localhost:27033"
+        },
+        "ok" : 1
+}
+mongos>
+
+
+-------------------------------------
+
+mongos> use parag
+switched to db parag
+mongos>
+mongos>
+mongos> db.test_collection.ensureIndex( { number : 1 } )
+{
+        "raw" : {
+                "shard2/localhost:27031,localhost:27032,localhost:27033" : {
+                        "createdCollectionAutomatically" : true,
+                        "numIndexesBefore" : 1,
+                        "numIndexesAfter" : 2,
+                        "ok" : 1,
+                        "$gleStats" : {
+                                "lastOpTime" : Timestamp(1494525237, 2),
+                                "electionId" : ObjectId("58ecceb062705300ff058f1f")
+                        }
+                }
+        },
+        "ok" : 1
+}
+mongos>
+mongos> sh.enableSharding( "parag" )
+{ "ok" : 1 }
+mongos>
+mongos> sh.shardCollection( "parag.test_collection", { "number" : 1 } )
+{ "collectionsharded" : "parag.test_collection", "ok" : 1 }
+mongos>
+mongos> var bulk = db.test_collection.initializeUnorderedBulkOp();
+mongos>
+
+mongos> people = ["Marc", "Bill", "George", "Eliot", "Matt", "Trey", "Tracy", "Greg", "Steve", "Kristina", "Katie", "Jeff"];
+[
+        "Marc",
+        "Bill",
+        "George",
+        "Eliot",
+        "Matt",
+        "Trey",
+        "Tracy",
+        "Greg",
+        "Steve",
+        "Kristina",
+        "Katie",
+        "Jeff"
+]
+mongos>
+
+mongos> for(var i=0; i<10000; i++){
+... user_id = i;
+... name = people[Math.floor(Math.random()*people.length)];
+... number = Math.floor(Math.random()*10001);
+... bulk.insert( { "user_id":user_id, "name":name, "number":number });
+... }
+mongos>
+mongos>
+mongos> bulk.execute();
+BulkWriteResult({
+        "writeErrors" : [ ],
+        "writeConcernErrors" : [ ],
+        "nInserted" : 10000,
+        "nUpserted" : 0,
+        "nMatched" : 0,
+        "nModified" : 0,
+        "nRemoved" : 0,
+        "upserted" : [ ]
+})
+mongos>
+
+
+-----------------------
+
+mongos> sh.status()
+--- Sharding Status ---
+  sharding version: {
+        "_id" : 1,
+        "minCompatibleVersion" : 5,
+        "currentVersion" : 6,
+        "clusterId" : ObjectId("58eccfbf8cb05b16dccd4774")
+}
+  shards:
+        {  "_id" : "shard1",  "host" : "shard1/localhost:27021,localhost:27022,localhost:27023" }
+        {  "_id" : "shard2",  "host" : "shard2/localhost:27031,localhost:27032,localhost:27033" }
+  balancer:
+        Currently enabled:  yes
+        Currently running:  yes
+                Balancer lock taken at Thu May 11 2017 23:33:09 GMT+0530 (IST) by DBATCNTLL01:27017:1491914681:1804289383:Balancer:1681692777
+        Failed balancer rounds in last 5 attempts:  0
+        Migration Results for the last 24 hours:
+                1 : Success
+  databases:
+        {  "_id" : "admin",  "partitioned" : false,  "primary" : "config" }
+        {  "_id" : "test",  "partitioned" : false,  "primary" : "shard2" }
+        {  "_id" : "satish",  "partitioned" : true,  "primary" : "shard2" }
+        {  "_id" : "dbTest",  "partitioned" : true,  "primary" : "shard2" }
+        {  "_id" : "students",  "partitioned" : true,  "primary" : "shard2" }
+                students.grades
+                        shard key: { "student_id" : 1 }
+                        chunks:
+                                shard2  1
+                        { "student_id" : { "$minKey" : 1 } } -->> { "student_id" : { "$maxKey" : 1 } } on : shard2 Timestamp(1, 0)
+        {  "_id" : "parag",  "partitioned" : true,  "primary" : "shard2" }
+                parag.test_collection
+                        shard key: { "number" : 1 }
+                        chunks:
+                                shard1  1
+                                shard2  6
+                        { "number" : { "$minKey" : 1 } } -->> { "number" : 11 } on : shard1 Timestamp(2, 0)
+                        { "number" : 11 } -->> { "number" : 3416 } on : shard2 Timestamp(2, 1)
+                        { "number" : 3416 } -->> { "number" : 5077 } on : shard2 Timestamp(1, 3)
+                        { "number" : 5077 } -->> { "number" : 6652 } on : shard2 Timestamp(1, 4)
+                        { "number" : 6652 } -->> { "number" : 8185 } on : shard2 Timestamp(1, 5)
+                        { "number" : 8185 } -->> { "number" : 9493 } on : shard2 Timestamp(1, 6)
+                        { "number" : 9493 } -->> { "number" : { "$maxKey" : 1 } } on : shard2 Timestamp(1, 7)
+
+mongos>
+
+mongos> sh.status()
+--- Sharding Status ---
+  sharding version: {
+        "_id" : 1,
+        "minCompatibleVersion" : 5,
+        "currentVersion" : 6,
+        "clusterId" : ObjectId("58eccfbf8cb05b16dccd4774")
+}
+  shards:
+        {  "_id" : "shard1",  "host" : "shard1/localhost:27021,localhost:27022,localhost:27023" }
+        {  "_id" : "shard2",  "host" : "shard2/localhost:27031,localhost:27032,localhost:27033" }
+  balancer:
+        Currently enabled:  yes
+        Currently running:  no
+        Failed balancer rounds in last 5 attempts:  0
+        Migration Results for the last 24 hours:
+                2 : Success
+  databases:
+        {  "_id" : "admin",  "partitioned" : false,  "primary" : "config" }
+        {  "_id" : "test",  "partitioned" : false,  "primary" : "shard2" }
+        {  "_id" : "satish",  "partitioned" : true,  "primary" : "shard2" }
+        {  "_id" : "dbTest",  "partitioned" : true,  "primary" : "shard2" }
+        {  "_id" : "students",  "partitioned" : true,  "primary" : "shard2" }
+                students.grades
+                        shard key: { "student_id" : 1 }
+                        chunks:
+                                shard2  1
+                        { "student_id" : { "$minKey" : 1 } } -->> { "student_id" : { "$maxKey" : 1 } } on : shard2 Timestamp(1, 0)
+        {  "_id" : "parag",  "partitioned" : true,  "primary" : "shard2" }
+                parag.test_collection
+                        shard key: { "number" : 1 }
+                        chunks:
+                                shard1  2
+                                shard2  5
+                        { "number" : { "$minKey" : 1 } } -->> { "number" : 11 } on : shard1 Timestamp(2, 0)
+                        { "number" : 11 } -->> { "number" : 3416 } on : shard1 Timestamp(3, 0)
+                        { "number" : 3416 } -->> { "number" : 5077 } on : shard2 Timestamp(3, 1)
+                        { "number" : 5077 } -->> { "number" : 6652 } on : shard2 Timestamp(1, 4)
+                        { "number" : 6652 } -->> { "number" : 8185 } on : shard2 Timestamp(1, 5)
+                        { "number" : 8185 } -->> { "number" : 9493 } on : shard2 Timestamp(1, 6)
+                        { "number" : 9493 } -->> { "number" : { "$maxKey" : 1 } } on : shard2 Timestamp(1, 7)
+
+
+mongos> sh.status()
+--- Sharding Status ---
+  sharding version: {
+        "_id" : 1,
+        "minCompatibleVersion" : 5,
+        "currentVersion" : 6,
+        "clusterId" : ObjectId("58eccfbf8cb05b16dccd4774")
+}
+  shards:
+        {  "_id" : "shard1",  "host" : "shard1/localhost:27021,localhost:27022,localhost:27023" }
+        {  "_id" : "shard2",  "host" : "shard2/localhost:27031,localhost:27032,localhost:27033" }
+  balancer:
+        Currently enabled:  yes
+        Currently running:  no
+        Failed balancer rounds in last 5 attempts:  0
+        Migration Results for the last 24 hours:
+                3 : Success
+  databases:
+        {  "_id" : "admin",  "partitioned" : false,  "primary" : "config" }
+        {  "_id" : "test",  "partitioned" : false,  "primary" : "shard2" }
+        {  "_id" : "satish",  "partitioned" : true,  "primary" : "shard2" }
+        {  "_id" : "dbTest",  "partitioned" : true,  "primary" : "shard2" }
+        {  "_id" : "students",  "partitioned" : true,  "primary" : "shard2" }
+                students.grades
+                        shard key: { "student_id" : 1 }
+                        chunks:
+                                shard2  1
+                        { "student_id" : { "$minKey" : 1 } } -->> { "student_id" : { "$maxKey" : 1 } } on : shard2 Timestamp(1, 0)
+        {  "_id" : "parag",  "partitioned" : true,  "primary" : "shard2" }
+                parag.test_collection
+                        shard key: { "number" : 1 }
+                        chunks:
+                                shard1  3
+                                shard2  4
+                        { "number" : { "$minKey" : 1 } } -->> { "number" : 11 } on : shard1 Timestamp(2, 0)
+                        { "number" : 11 } -->> { "number" : 3416 } on : shard1 Timestamp(3, 0)
+                        { "number" : 3416 } -->> { "number" : 5077 } on : shard1 Timestamp(4, 0)
+                        { "number" : 5077 } -->> { "number" : 6652 } on : shard2 Timestamp(4, 1)
+                        { "number" : 6652 } -->> { "number" : 8185 } on : shard2 Timestamp(1, 5)
+                        { "number" : 8185 } -->> { "number" : 9493 } on : shard2 Timestamp(1, 6)
+                        { "number" : 9493 } -->> { "number" : { "$maxKey" : 1 } } on : shard2 Timestamp(1, 7)
+
+mongos>
+
+
+

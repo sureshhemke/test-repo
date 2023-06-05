@@ -1,0 +1,41 @@
+VM Replacement
+ 
+Steps to remove the olds servers
+
+Sequence
+1. Remove shareds 
+2. Remove config
+3. Last remove mongos
+
+Steps: Shard remove
+Modify the cluster
+Jump to the "Member Configuration" 
+Go shard setting and click on 3 dots on the server which needs to be removed Then click "Removed from Shard"
+Do the same steps for all the shard servers.
+
+The click on "save" and "review & Deploy" => Confirm & Deploy => check the status in "VIEW STATUS"
+
+Once you did this you can see those servers outside of the cluster. Remove it one by one individual server click on "review & Deploy" 
+
+Steps: Config remove
+
+Jump to the "Member Configuration" 
+Go Config server replica setting and click on 3 dots on the server which needs to be removed Then click "Removed from Replica Set"
+Do the same steps for all the config servers.
+
+The click on "save" and "review & Deploy" => Confirm & Deploy => check the status in "VIEW STATUS"
+
+Once you did this you can see those servers outside of the cluster. Remove it one by one individual servers click on "review & Deploy" 
+
+
+Steps: Mongo remove
+
+Jump to the "Member Configuration" 
+Go Mongos setting and click on 3 dots on the server which need to be removed Then click "Removed from Cluster"
+Do the same steps for all the mongos servers.
+
+The click on "save" and "review & Deploy" => Confirm & Deploy => check the status in "VIEW STATUS"
+
+
+
+

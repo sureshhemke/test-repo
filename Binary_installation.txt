@@ -1,0 +1,149 @@
+Binary Installation :
+--------------------
+
+Dlownload link : https://www.mongodb.com/try/download/community
+
+wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-4.0.23.tgz
+
+First extract the tar file
+
+tar -zxvf mongodb-linux-x86_64-rhel70-4.0.23.tgz
+
+===============
+
+rename the source directory
+
+mv mongodb-linux-x86_64-rhel70-4.0.23 mongodb_4_0_23
+
+===============
+
+useradd mongod
+
+Create Data Directory
+
+mkdir -p /opt/data
+
+chown -R mongod:mongod /opt/data
+
+/usr/local/mongodb_4_0_23/bin/mongod --port 27001 --dbpath /opt/data -logpath /opt/data/mongod_27001.log --fork
+
+To connect to mongo instance 
+
+/usr/local/mongodb_4_0_23/bin/mongo --port 27001
+
+=================
+
+##Replica set
+/usr/local/mongodb_4_0_23/bin/mongod --port 27001 --dbpath /opt/data --replSet netmagic --smallfiles --oplogSize 50 --logpath /opt/data/mongod_27001.log --fork
+
+##Sharding 
+/usr/local/mongodb_4_0_23/bin/mongod --shardsvr --replSet shard1 --dbpath /mnt/vol1/shard1/shard1a --logpath /opt/data/mongod_27001.log -port 27001 --fork
+
+
+=================
+
+kill the running mongo process
+
+[root@mongodb1 bin]# ps -ef | grep -i mongo
+root      1766     1  0 Mar26 ?        00:29:33 mongod -f /etc/mongod.conf
+root     29743     1  0 03:52 ?        00:00:03 mongod --port 27001 --dbpath /opt/data -logpath /opt/data/mongod_27001.log --fork
+root     29908 29461  0 04:09 pts/0    00:00:00 grep --color=auto -i mongo
+[root@mongodb1 bin]#
+[root@mongodb1 bin]#
+[root@mongodb1 bin]# kill -9 29743
+
+
+=================
+
+> db.version()
+4.0.23
+
+-------
+
+# mongo --version
+
+-------
+
+Shutdown the process 
+
+> use admin
+switched to db admin
+
+> db.shutdownServer()
+
+>exit
+
+==================
+
+Start mongod process by using config file
+
+/usr/local/mongodb_4_0_23/bin/mongod -f /etc/mongod_27001.conf   
+
+		or
+
+/usr/local/mongodb_4_0_23/bin/mongod --config /etc/mongod_27001.conf
+
+-------------------
+Sample config file
+-------------------
+
+[root@mongodb1 bin]# cat /etc/mongod_27001.conf
+# mongod.conf
+
+# for documentation of all options, see:
+#   http://docs.mongodb.org/manual/reference/configuration-options/
+
+# where to write logging data.
+systemLog:
+  destination: file
+  logAppend: true
+  path: /opt/data/mongod_27001.log
+
+# Where and how to store data.
+storage:
+  dbPath: /opt/data
+  journal:
+    enabled: true
+#  engine:
+#  mmapv1:
+#  wiredTiger:
+
+# how the process runs
+processManagement:
+  fork: true  # fork and run in background
+  pidFilePath: /var/run/mongodb/mongod_27001.pid  # location of pidfile
+  timeZoneInfo: /usr/share/zoneinfo
+
+# network interfaces
+net:
+  port: 27001
+  bindIp: 0.0.0.0  # Enter 0.0.0.0,:: to bind to all IPv4 and IPv6 addresses or, alternatively, use the net.bindIpAll setting.
+
+
+#security:
+
+#operationProfiling:
+
+#replication:
+
+#sharding:
+
+## Enterprise-Only Options
+
+#auditLog:
+
+#snmp:
+
+--------------------------
+To connect to the mongo instances
+
+/usr/local/mongodb_4_0_23/bin/mongo --port 27001
+
+-------------------------
+
+
+
+
+
+
+

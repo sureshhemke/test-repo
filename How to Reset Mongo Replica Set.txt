@@ -1,0 +1,36 @@
+================================================================
+MongoDB – How to Reset Mongo Replica Set
+================================================================
+
+@ The following instructions would help you to reset MongoDB replica set settings and start over with replication all over again.
+a. Shut down the mongodb server
+b. Start the mongodb server in the standalone mode, e.g., without –replSet <replicaSetName>.
+   disable replica in mongod.conf and restart service to start mongod as standalone.
+c. Login to Mongodb; You can use admin database
+d. Make sure that user has readWrite/dbAdmin permission to local database. In case, it is not, 
+   use following command to grant the role to the user. 
+   The following command gives readWrite/dbAdmin permission on local database to admin user.
+   
+   >  db.grantRolesToUser("admin", [{role: "readWrite", db: "local"}]);
+   >  db.grantRolesToUser("admin", [{role: "dbAdmin", db: "local"}]);
+
+e. Switch to local database
+f. Execute the command to make the cllection such as system.replset empty   
+   > db.system.replset.remove({});
+   
+g. Make sure that system.replset in local database is empty by executing the following command:   
+   > db.system.replset.find();
+   
+   If not able to delete colletction. We can delete/drop "local" DB.
+   > use local
+   > db.dropDatabase()
+h. Enable replica in mongod.conf and Start the MongoDB database all over again
+
+i. Login to Mongodb using admin user and execute following command to initialize the replication set and add seconadry servers.
+   #mongo -u mongo-admin -p --authenticationDatabase admin
+   > rs.initiate();
+
+j. Switch over to local database and execute following command to make sure that there exists an entry for the replication.
+   > db.system.replset.find();
+   
+URL: https://vitalflux.com/mongodb-how-to-reset-mongo-replica-set/

@@ -1,0 +1,75 @@
+Note: Take Pre-Check before start the activity and post check after activity
+1. Please raised the spsysadmin root credentiald Request
+2. Shedule the maintainance windows on project
+3. Create the backup dir under /mongobkp-prod/ shared dir
+4. Take the key file backup to /mongobkp-prod/ for each servers
+# cp -rvp /etc/mongodb-mms/gen.key /mongobkp-prod/mms-upgrade-14082022/Servername
+
+5. Take the /opt/mongodb/mms/ dir backup for each servers
+# cp -rvp  /opt/mongodb/mms/ /mongobkp-prod/mms-upgrade-14082022/Servername
+
+6. Take the below files output in txt file for validation
+# cd /opt/mongodb/mms/conf
+# cat conf-mms.properties
+# cat mms.conf
+
+7. Check the mongodb-mms service status and then stop the service on server.
+
+[root@10 mongodb]# service mongodb-mms status
+Check Ops Manager status
+   Probing instance 0...[  OK  ]
+      The instance is running.
+Check Backup Daemon status[FAILED]
+   Backup Daemon is not running.
+   
+[root@10 mongodb]# service mongodb-mms stop
+Stopping Ops Manager server
+   Instance 0 stopping
+      Trying to shutdown gracefully.[  OK  ]
+Stopping the Backup Daemon[FAILED]
+      Backup Daemon is not running
+[root@10 mongodb]#
+
+8. Download the mms package on all servers
+# wget  https://protect-us.mimecast.com/s/ip-_CL9zE8FQ6ml7FB46RQ?domain=downloads.mongodb.com
+
+9. Upgrade the package on one server initally 
+
+[root@10 mongodb]# rpm -Uhv mongodb-mms-4.4.23.100.20220706T0858Z-1.x86_64.rpm
+warning: mongodb-mms-4.4.23.100.20220706T0858Z-1.x86_64.rpm: Header V3 RSA/SHA256 Signature, key ID 93d1cde7: NOKEY
+Verifying...                          ################################# [100%]
+Preparing...                          ################################# [100%]
+Updating / installing...
+   1:mongodb-mms-4.4.23.100.20220706T0################################# [ 50%]
+Cleaning up / removing...
+   2:mongodb-mms-4.4.20.100.20220110T2################################# [100%]
+[root@10 mongodb]#
+
+10. Check The permission of dir /opt/mongodb/ &/opt/mongodb/mms, If not the set the permission "mongodb-mms" recorsivly
+# chown -R mongodb-mms:mongodb-mms /opt/mongodb/
+
+11. Configure the mms.conf and conf-mms.properties file as per old file (Which we have taken the backup)
+
+13. Try to start the service on one server, If service not gets start then do the upgrade on rest of the servers
+
+14. Upgrade the MMS on rest of the servers 
+
+15. Check the service status and then start it on all the server at same time one by one
+
+[root@10 mongodb]# service mongodb-mms start
+Starting pre-flight checks
+
+16. Enable the service in reboot
+[root@10 mongodb]# systemctl enable mongodb-mms 
+
+Once services start on all servers check the MMS URL
+
+Check the logs for error if any
+
+17. Login to the MMS URL and updated the agents (automation agent and mongotools)
+
+18. Once all done then remove the maintainance windows
+
+19. Verify the backup status next day
+
+

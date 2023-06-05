@@ -1,0 +1,26 @@
+===================================================================
+MongoDB Questions and Answers
+===================================================================
+1. Whais role/job of Automation Agents ?
+=> The Automation Agents will gather detailed information about the current state of your deployment. 
+   Each Automation Agent is responsible for gathering information about the MongoDB processes on its local server. 
+   Information about MongoDB users and roles will also be gathered.
+   
+2. Use of Ops Manager   
+=> MongoDB Ops Manager can automate, monitor, and back up your MongoDB infrastructure.
+
+3. Ops Manager Backup
+=> Ops Manager provides three ways to store MongoDB snapshots, on a File System, in a MongoDB database (Blockstore), and in Amazon S3.
+
+   a. File System Storage - Snapshots are stored on a regular File System, in a configured directory. 
+      There will be a sub-directory per Snapshot and the files in that Snapshot will be individually compressed.
+   b. Database Storage / Blockstore - Snapshots are stored in a MongoDB database in a compressed, de-duplicated format. 
+      Depending on data usage patterns the de-duplication can provide significant storage savings without the need for any specialized hardware or other software.  
+   c. S3 Blockstore - Snapshots are stored in Amazon S3 in a compressed, de-duplicated format. 
+      Meanwhile, the metadata for each file within the Snapshots are kept in a local MongoDB database. 
+	  Depending on data usage patterns the de-duplication can provide significant storage savings without the need for any specialized hardware or other software.  
+	  
+4.operations with high numyields meaning
+=> This is usually waiting for data to be loaded from disk. So in short, if you see a high number of yields, that means the query spent a lot of time waiting for data to be loaded from disk. 
+   The cause is typically: A query returning or processing a large amount of data.
+  

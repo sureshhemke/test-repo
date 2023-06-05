@@ -1,0 +1,358 @@
+================================================================
+				MongoDB OPS Manager
+================================================================
+Pre-requisite:
+1. Configure hostname and ip address in /etc/hosts for local resolver
+2. If you run Ops Manager application and Backup Daemon on single server
+Below is requirement. For more you can check on mongodb website.
+System Memory for app : 15 GB
+System Memory for bkp : 15 GB
+Means total 30GB RAM require
+Disk Capacity  : 50 GB in /
+
+3. Open Ports to Access Ops Manager
+
+Ops Manager requires the following minimum network port requirements:
+
+a. Both Ops Manager users and MongoDB Agents must be able to connect to the Ops Manager application over HTTP or HTTPS.
+b. Ops Manager must be able to connect to the mongod running the Ops Manager application MongoDB databases.
+c. For each Ops Manager project, MongoDB Agents must be able to connect to all client MongoDB processes (mongod or mongos).
+d. The Ops Manager application must also be able to send email to Ops Manager users.
+
+HTTP: 8080	Inbound
+HTTPS: 8443	Inbound
+HTTP or HTTPS 8090	Inbound
+MongoDB	27017	Outbond
+SMTP	587	Outbound
+
+4. Internet Site Access
+Site						Purpose
+downloads.mongodb.com		To download MongoDB Enterprise Builds.
+opsmanager.mongodb.com		To download the MongoDB version manifest.
+fastdl.mongodb.org			To download MongoDB Community Builds.
+
+See below URL to check for complete pre-requisite
+URL: https://docs.opsmanager.mongodb.com/current/core/requirements/
+
+==
+MongoDB OPS Manager (MMS) is a tool for administering and managing MongoDB deployments, particularly large clusters. MongoDB Inc. 
+qualified it as “the best way to manage your MongoDB data center“. 
+OPS Manager also allows you to deploy a complete MongoDB cluster in multiple nodes and several topologies.  
+
+-----------------------
+MongoDB Installation
+-----------------------
+Once your server has been provisioned, you can start the installation of MongoDB.
+It’s important to know, that OPS Manager needs a MongoDB database in order to stores the application information.  
+That’s why we need to install and start a mongo database at first.
+
+1. Install MongoDB packages
+   yum install -y mongodb-org
+
+2. Create the Ops Manager Application Database directory
+   mkdir -p /data/appdb
+   chown -R mongod:mongod /data
+   
+3. Create the Ops Manager backup data directory
+   mkdir -p /data/backup
+   chown mongod:mongod /data/backup
+
+4. Start the Ops Manager Application Database mongod instance.   
+
+   vi /etc/mongod.conf
+=> Enable wiredTiger engine under storage and add engineConfig & cacheSizeGB as shown below exactly
+storage:
+  dbPath: /data/appdb
+  journal:
+    enabled: true
+#  engine:
+#  mmapv1:
+  wiredTiger:	<= enable this engine
+    engineConfig:	<= Add this line under wiredTiger 
+      cacheSizeGB: 1	<= Add this line under 	engineConfig. 1 is size in GB
+
+Once above configuration done in .conf then start service. You can see the logs to check cache sise.
+	  OR
+you can start mongod using below command.
+------------------------------------------------------------------------------------------------------------
+mongod --port 27017 --dbpath /data/appdb --logpath /data/appdb/mongodb.log --wiredTigerCacheSizeGB 1 --fork
+------------------------------------------------------------------------------------------------------------
+====== 
+Note : For high availability configure replicaset for application and backup database instance.
+======
+---------------------------------
+Download the Ops Manager package.
+---------------------------------
+1. Download the Ops Manager rpm package from MongoDB Download Center. 
+   URL: https://www.mongodb.com/download-center/ops-manager?jmp=docs
+2. From the Platforms drop-down menu, click Red Hat + CentOS 6, 7 / SUSE 12 / Amazon Linux.  
+3. From the Packages drop-down menu, click RPM and click Download   
+Or
+Download the latest stable release from link below
+
+---------------------------------
+Install Ops Manager
+---------------------------------
+1. Install the .rpm package by issuing the following command
+
+[root@mongo-ops-mgr opt]# rpm -ivh mongodb-mms-4.0.15.50565.20190823T1918Z-1.x86                                                                                        _64.rpm
+Preparing...                          ################################# [100%]
+Updating / installing...
+   1:mongodb-mms-4.0.15.50565.20190823################################# [100%]
+[root@mongo-ops-mgr opt]#
+
+2. The install creates the following:
+
+The base directory for the Ops Manager software, which is:
+
+/opt/mongodb/mms/
+
+3. A new system user, mongodb-mms, under which the host runs.
+
+4. The /opt/mongodb/mms/conf/conf-mms.properties file, which contains the connection string to access the Application Database. 
+   The default is locahost, port 27017, so no changes are necessary. 
+   if you have replica set configured with auth for Ops manager to store data then add below string
+   -----------------------------------------------------------------------------------------------------------------
+   mongo.mongoUri=mongodb://mongo-root:password@ops-manager-db-1:27017,ops-manager-db-2:27017,ops-manager-db-3:27017/?replicaSet=rs-ops-db&maxPoolSize=150
+   -----------------------------------------------------------------------------------------------------------------
+-----------------------
+Configure the Ops Manager connection to the Ops Manager Application Database. (Optional, If u have ssl and kfb login then only use below steps)
+-----------------------
+a. On a server that is to run the Ops Manager, open /opt/mongodb/mms/conf/conf-mms.properties with root privileges and configure the settings described here, 
+as appropriate.
+b. Configure the following setting to provide the connection string Ops Manager uses to connect to the database:
+   "mongo.mongoUri"
+
+c. If you will configure Ops Manager to use the Ops Manager Application Database over SSL, configure the following SSL settings.
+
+	mongo.ssl
+	mongodb.ssl.CAFile
+	mongodb.ssl.PEMKeyFile
+	mongodb.ssl.PEMKeyFilePassword 
+Ops Manager also uses these settings for SSL connections to Backup Databases
+
+d. If you will configure Ops Manager to use Kerberos to manage access to the Ops Manager Application Database, configure the following Kerberos settings:
+
+	jvm.java.security.krb5.conf
+	jvm.java.security.krb5.kdc
+	jvm.java.security.krb5.realm
+	mms.kerberos.principal
+	mms.kerberos.keyTab	
+	
+5. Start Ops Manager service .i.e mongodb-mms
+
+   service mongodb-mms start
+-------------------------------------------------
+[root@mongo-ops-mgr ~]# service mongodb-mms start
+-------------------------------------------------
+Output: 
+Starting pre-flight checks
+Successfully finished pre-flight checks
+
+Migrate Ops Manager data
+   Running migrations...[  OK  ]
+Start Ops Manager server
+   Instance 0 is already running[FAILED]
+Starting pre-flight checks
+Successfully finished pre-flight checks
+
+Start Backup Daemon...[  OK  ]
+[root@mongo-ops-mgr ~]#
+
+You can check the logs, to check whats happening in backend or for any error.   
+
+tailf /opt/mongodb/mms/logs/mms-migration.log
+tail -f /opt/mongodb/mms/logs/mms0.log
+tail -f /opt/mongodb/mms/logs/mms0-startup.log
+
+6. Open the Ops Manager home page and register the first user
+	Enter the following URL in a browser, fqdn or IP address of the server:
+	http://192.168.56.120:8080
+  Click the Register link and follow the prompts to register the first user and create the first project. 
+  The first user is automatically assigned the Global Owner role.
+	(http://192.168.56.120:8080/v2/admin#setup/webServerAndEmail)
+7. Once your account have been created, configure the OPS Manager access URL.
+   Configure approprite details in from and Click on Continue and configure the User Authentication, Backup Snapshots, Proxy.
+   
+ Once your initial configuration done.
+================================= 
+Ops Manager Deployment
+=================================
+Prerequisites 
+
+1. At least 10 GB of free disk space plus whatever space is necessary to hold your MongoDB data.
+2. At least 4 GB of RAM.
+3. The Automation Agent must be installed only on 64-bit architectures.
+   Install the following binaries
+#yum install cyrus-sasl cyrus-sasl-gssapi cyrus-sasl-plain krb5-libs libcurl libpcap lm_sensors-libs net-snmp net-snmp-agent-libs openldap openssl rpm-libs tcp_wrappers-libs
+  a. Ops Manager can automate operations for the MongoDB processes running on your servers. 
+  b. Ops Manager can both discover existing processes and deploy new ones.
+  c. Ops Manager Automation relies on an Automation Agent, which must be installed on every server that runs a monitored MongoDB deployment. 
+     The Automation Agents periodically poll Ops Manager to determine the goal configuration, deploy changes as needed, 
+	 and report deployment status back to Ops Manager.
+
+4. In Ops Manager, click Deployment, then the Agents tab, then Downloads & Settings.
+5. Under Automation, click your operating system and follow the instructions to install and run the agent.	
+   Copy all details encluding key. and perfrome on all these steps on OpsManager server .i.e 192.168.56.120
+   
+   Below are the steps currently we need to follow.
+   ************************************************************************************************************
+   1. Download the agent
+	curl -OL http://192.168.56.120:8080/download/agent/automation/mongodb-mms-automation-agent-manager-5.4.22.5547-1.x86_64.rhel7.rpm
+	and install the package.
+	sudo rpm -U mongodb-mms-automation-agent-manager-5.4.22.5547-1.x86_64.rhel7.rpm
+	
+	2. Create a new Agent API Key. After being generated, keys will only be shown once.
+	Treat this API Key like a password.
+	3. Next, open the config file
+	sudo vi /etc/mongodb-mms/automation-agent.config
+	
+	and enter your API key, Project ID, and Ops Manager Base URL as shown below.
+	mmsGroupId=5dc00bb4726e70088281157f
+	mmsApiKey=5dc01f78726e700882811903a4b97d8315468eba9b1d5769245c9b10
+	mmsBaseUrl=http://192.168.56.120:8080
+	
+	To manage your API keys, visit the Agent API Keys tab.
+	
+	4. Prepare the /data directory to store your MongoDB data. This directory must be owned by the mongod user.
+	
+	sudo mkdir -p /data
+	sudo chown mongod:mongod /data
+	5. Start the agent.
+	sudo systemctl start mongodb-mms-automation-agent.service
+	
+	On SUSE, it may be necessary to run:
+	sudo /sbin/service mongodb-mms-automation-agent start
+	************************************************************************************************************
+=================================
+Add Existing MongoDB Processes to Ops Manager
+=================================
+
+1. Add MongoDB Processes
+
+Click Deployment tab.
+
+Click Add New and select Existing MongoDB Deployment.
+
+Follow the prompts to add the deployment.
+
+You can see here currntly installed agent details, which we completed in above steps
+|----------------------------------------|
+|mongo-ops-mgr                           |
+|----------------------------------------|
+|State 			 |Port 	|Version          |
+|Automation Agent 		|5.4.22.5547      |
+|----------------------------------------|
+|Automation Agent Successfully Verified  |
+|----------------------------------------|
+							Continue
+							Agents Verified
+
+Once you click on Continue button you can see below output.
+2. 
+Set up Ops Manager Monitoring:
+------------------------------
+	The Automation Agent will now install a Monitoring Agent on your server. 
+	The Monitoring Agent will be used to collect health and performance metrics from your MongoDB deployment. 
+	A Backup Agent will also be installed, but will lie dormant until you choose to enable our Backup feature.
+
+|----------------------------------------|
+|mongo-ops-mgr                           |
+|----------------------------------------|
+|State 			 |Port 	|Version         |
+|Automation Agent 		|5.4.22.5547	 |
+|Monitoring Agent 		|6.6.2.466       |
+|Backup Agent 			|6.8.7.1024		 |
+|----------------------------------------|
+|Monitoring Agent Successfully Verified  |
+|----------------------------------------|
+
+Click on continue then you will jump on below page
+3. 
+Import your deployment for monitoring - Complete this form and click continue.
+4. 
+Adding your deployment to Ops Manager
+	Ops Manager is discovering all MongoDB processes in your deployment. This may take up to 10 minutes, please be patient. 
+	Once you see all of the processes in your deployment here, you can hit continue. If not all processes are discovered, 
+	make sure that each process is able to accept connections from the server on which you installed the Ops Manager Agent.
+All processes accounted for? If yes, please continue. If not, please go to Advanced Setup or Get Help.
+|------------------------------------------------|
+|mongo-ops-mgr									 |
+|------------------------------------------------|
+|OS Name:  CentOS Linux release 7.7.1908 (Core)  |
+|RAM: 4800 MB                                    |
+|State 			  Port 	|Version                 |
+|Automation Agent		|5.4.22.5547             |
+|Monitoring Agent		|6.6.2.466               |
+|Backup Agent			|6.8.7.1024              |
+|standalone		 |27017	|4.0.12                  |
+|------------------------------------------------|
+
+Click Continue
+
+5. Do you want to add Ops Manager Automation to this deployment?
+	You've already connected your database and set it up to be monitored by Ops Manager. 
+	You can now take your Ops Manager integration a step further and unlock the power of managing your database with the click of a button. 
+	You will be required to install an Automation Agent on each remaining server in your deployment on the next step...
+
+Click accept and continue
+
+6. Install an Automation Agent on each of your servers
+   Before you can begin using automation features, please install an agent on each of the servers in your deployment. 
+|------------------------------------------------|
+|mongo-ops-mgr									 |
+|------------------------------------------------|
+|OS Name:  CentOS Linux release 7.7.1908 (Core)  |
+|RAM: 4800 MB                                    |
+|State 			  Port 	|Version                 |
+|Automation Agent		|5.4.22.5547             |
+|Monitoring Agent		|6.6.2.466               |
+|Backup Agent			|6.8.7.1024              |
+|standalone		 |27017	|4.0.12                  |
+|------------------------------------------------|
+|Automation Agent Successfully Verified			 |
+|------------------------------------------------|
+							
+							Initialize Automation
+							Agents Verified
+Click on Initialize Automation.
+
+7. Initializing Automation for your Deployment
+	Before you can begin using automation, the Automation Agents will gather detailed information about the current state of your deployment. 
+	Each Automation Agent is responsible for gathering information about the MongoDB processes on its local server.
+	
+	Once the information gathering is complete you will have one final chance to review the generated map of your deployment. 
+	When you Confirm & Deploy the changes, the Automation Agents will take over management of your deployment by performing a one-time restart.							
+|------------------------------------------------|
+|mongo-ops-mgr									 |
+|------------------------------------------------|
+|OS Name:  CentOS Linux release 7.7.1908 (Core)  |
+|RAM: 4800 MB                                    |
+|State 			  Port 	|Version                 |
+|Automation Agent		|5.4.22.5547             |
+|Monitoring Agent		|6.6.2.466               |
+|Backup Agent			|6.8.7.1024              |
+|standalone		 |27017	|4.0.12                  |
+|------------------------------------------------|
+|Gathered state for all processes				 |
+|------------------------------------------------|
+						Review Deployment
+						All information successfully gathered
+Click on	Review Deployment.
+
+Once you click. You can see warnning "Review & Deploy". Click on that and complete review.
+You can see the status on top status bar.
+"We are deploying your changes. This might take a few minutes...VIEW STATUSVIEW AGENT LOGSALLOW EDITING & OVERRIDE CURRENT CONFIGURATION"
+
+Your changes have been successfully deployed!
+
+Done.
+
+Auth Key File (Linux): /var/lib/mongodb-mms-automation/keyfile
+
+db.createUser({
+user: 'mms-automation', 
+pwd: 'password', 
+roles: ['clusterAdmin', 'dbAdminAnyDatabase', 'readWriteAnyDatabase', 'restore', 'userAdminAnyDatabase']})
+
+					

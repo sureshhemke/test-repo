@@ -1,0 +1,197 @@
+
+1. Installation through binary or RPM 
+
+Dlownload link : https://www.mongodb.com/try/download/community
+
+2. Installation through YUM 
+
+https://docs.mongodb.com/v4.0/tutorial/install-mongodb-on-red-hat/
+
+===================
+
+RHEL 
+
+rpm -qa | grep -i mongo    - To Check the packages are installed or not
+
+Ubuntu
+
+dpkg -l | grep -i mongo    - To check the .deb packages are installed or not.
+
+yum install wget
+
+wget https://repo.mongodb.org/yum/redhat/7/mongodb-org/4.0/x86_64/RPMS/mongodb-org-server-4.0.23-1.el7.x86_64.rpm
+wget https://repo.mongodb.org/yum/redhat/7/mongodb-org/4.0/x86_64/RPMS/mongodb-org-mongos-4.0.23-1.el7.x86_64.rpm
+wget https://repo.mongodb.org/yum/redhat/7/mongodb-org/4.0/x86_64/RPMS/mongodb-org-tools-4.0.23-1.el7.x86_64.rpm
+wget https://repo.mongodb.org/yum/redhat/7/mongodb-org/4.0/x86_64/RPMS/mongodb-org-shell-4.0.23-1.el7.x86_64.rpm
+
+mongodb-org-mongos-4.0.23-1.el7.x86_64.rpm  => sharding, It will ack as router. it will not hold any data.
+mongodb-org-shell-4.0.23-1.el7.x86_64.rpm   => If you want to database it will come in to picher. CLint to connect to (mongo -u root -p )
+mongodb-org-server-4.0.23-1.el7.x86_64.rpm  => It will act as server deamon, mongod will when we start the mongo process.
+mongodb-org-tools-4.0.23-1.el7.x86_64.rpm   => mongobackup, mongorestore, montop, monogstat etc.
+
+rpm -ivh mongodb-org-server-4.0.23-1.el7.x86_64.rpm    -> To install the .rpm file
+
+[ RPM - Redhat Package Manager  ]
+
+[root@ip-172-31-31-7 ec2-user]# rpm -ivh mongodb-org-*
+
+warning: mongodb-org-mongos-4.0.23-1.el7.x86_64.rpm: Header V3 RSA/SHA1 Signature, key ID e52529d4: NOKEY
+Preparing...                          ################################# [100%]
+Updating / installing...
+   1:mongodb-org-tools-4.0.23-1.el7   ################################# [ 25%]
+   2:mongodb-org-shell-4.0.23-1.el7   ################################# [ 50%]
+   3:mongodb-org-server-4.0.23-1.el7  ################################# [ 75%]
+Created symlink from /etc/systemd/system/multi-user.target.wants/mongod.service to /usr/lib/systemd/system/mongod.service.
+   4:mongodb-org-mongos-4.0.23-1.el7  ################################# [100%]
+
+--------------------
+
+[root@ip-172-31-31-7 ec2-user]# systemctl status mongod
+● mongod.service - MongoDB Database Server
+   Loaded: loaded (/usr/lib/systemd/system/mongod.service; enabled; vendor preset: disabled)
+   Active: active (running) since Sun 2021-03-28 16:00:39 UTC; 2s ago
+     Docs: https://docs.mongodb.org/manual
+  Process: 1455 ExecStart=/usr/bin/mongod $OPTIONS (code=exited, status=0/SUCCESS)
+  Process: 1453 ExecStartPre=/usr/bin/chmod 0755 /var/run/mongodb (code=exited, status=0/SUCCESS)
+  Process: 1451 ExecStartPre=/usr/bin/chown mongod:mongod /var/run/mongodb (code=exited, status=0/SUCCESS)
+  Process: 1450 ExecStartPre=/usr/bin/mkdir -p /var/run/mongodb (code=exited, status=0/SUCCESS)
+ Main PID: 1458 (mongod)
+   CGroup: /system.slice/mongod.service
+           └─1458 /usr/bin/mongod -f /etc/mongod.conf
+
+
+systemctl status  mongod
+
+systemctl stop mongod
+
+To check the process is runnning or not
+
+[root@ip-172-31-31-7 ec2-user]# ps -ef | grep -i mongo
+mongod    1458     1  1 16:00 ?        00:00:00 /usr/bin/mongod -f /etc/mongod.conf
+root      1502  1355  0 16:01 pts/0    00:00:00 grep --color=auto -i mongo
+
+--------------
+
+To chcek mongo running on which port 
+
+[root@ip-172-31-31-7 ec2-user]# netstat -tulnlp | grep -i mongo
+tcp        0      0 127.0.0.1:27017         0.0.0.0:*               LISTEN      1458/mongod
+
+--------------
+
+To check mongo installed or not
+
+[root@ip-172-31-31-7 ec2-user]# rpm -qa | grep -i mongo
+mongodb-org-shell-4.0.23-1.el7.x86_64
+mongodb-org-mongos-4.0.23-1.el7.x86_64
+mongodb-org-tools-4.0.23-1.el7.x86_64
+mongodb-org-server-4.0.23-1.el7.x86_64
+
+--------------
+
+mongo default data directory = /var/lib/mongo
+
+mongo default port = 27017
+
+----------------------
+
+YUM Installation
+
+Why we have to use the YUM insted of RPM - YUM will resolve the depedancy through there reposirory and easy to install.
+
+[root@ip-172-31-31-7 ec2-user]# yum install mongodb-org-4.0.23 mongodb-org-server-4.0.23 mongodb-org-shell-4.0.23 mongodb-org-mongos-4.0.23 mongodb-org-tools-4.0.23
+Loaded plugins: amazon-id, rhui-lb, search-disabled-repos
+Package mongodb-org-server-4.0.23-1.el7.x86_64 already installed and latest version
+Package mongodb-org-shell-4.0.23-1.el7.x86_64 already installed and latest version
+Package mongodb-org-mongos-4.0.23-1.el7.x86_64 already installed and latest version
+Package mongodb-org-tools-4.0.23-1.el7.x86_64 already installed and latest version
+Resolving Dependencies
+--> Running transaction check
+---> Package mongodb-org.x86_64 0:4.0.23-1.el7 will be installed
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+=============================================================================================================================================================
+ Package                              Arch                            Version                                 Repository                                Size
+=============================================================================================================================================================
+Installing:
+ mongodb-org                          x86_64                          4.0.23-1.el7                            mongodb-org-4.0                          5.9 k
+
+Transaction Summary
+============================================================================================================================================================
+
+Install  1 Package
+
+Total download size: 5.9 k
+Installed size: 0
+Is this ok [y/d/N]:
+
+===================
+
+How to remove the RPM 
+
+[root@ip-172-31-31-7 ec2-user]# rpm -e mongodb-org-shell-4.0.23-1.el7.x86_64 mongodb-org-mongos-4.0.23-1.el7.x86_64 mongodb-org-tools-4.0.23-1.el7.x86_64 mongodb-org-server-4.0.23-1.el7.x86_64
+
+===================
+
+How to remove through YUM 
+
+[root@ip-172-31-31-7 ec2-user]# yum remove mongodb-org-*
+
+===================
+
+Need to change the selinux - Firewall
+
+ vi  /etc/selinux/config
+
+SELINUX=permissive or SELINUX=disabled #### It will require reboot the server.
+
+Save and exit escape :wq!
+
+===================
+
+Configuration file
+
+-------------------
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log
+
+# Where and how to store data.
+storage:
+  dbPath: /var/lib/mongo
+  journal:
+    enabled: true
+#  engine:
+#  mmapv1:
+#  wiredTiger:
+
+# how the process runs
+processManagement:
+  fork: true  # fork and run in background
+  pidFilePath: /var/run/mongodb/mongod.pid  # location of pidfile
+  timeZoneInfo: /usr/share/zoneinfo
+
+# network interfaces
+net:
+  port: 27017
+  bindIp: 0.0.0.0  # Enter 0.0.0.0,:: to bind to all IPv4 and IPv6 addresses or, alternatively, use the net.bindIpAll setting.
+
+
+#security:
+
+#operationProfiling:
+
+#replication:
+
+#sharding:
+
+## Enterprise-Only Options
+
+#auditLog:
+
+#snmp:
+
+------------------
